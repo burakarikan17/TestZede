@@ -30,45 +30,63 @@ herkesi etkiler, PR'da üç kişinin de onayı gerekir.
 ```python
 @dataclass(frozen=True)
 class CodeUnit:
-    uid: str                    # "HumanEval/12", "small67/5", "<repo>::<modül>.<fonk>"
+    uid: str  # "HumanEval/12", "small67/5", "<repo>::<modül>.<fonk>"
     source: str
-    entry_point: str | None     # test edilecek fonksiyon adı
+    entry_point: str | None  # test edilecek fonksiyon adı
     dataset: str | None
-    seed_examples: tuple[str, ...] = ()   # docstring'deki >>> örnekleri
+    seed_examples: tuple[str, ...] = ()  # docstring'deki >>> örnekleri
+
 
 @dataclass
 class TestCase:
     name: str
-    code: str                   # tek bir pytest fonksiyonu
+    code: str  # tek bir pytest fonksiyonu
     origin: Literal["user", "rl"]
+
 
 @dataclass
 class CoverageReport:
-    covered_lines: int; total_lines: int
-    covered_branches: int; total_branches: int
-    per_function: dict[str, float]          # Emma benzeri ağaç görünümü için
+    covered_lines: int
+    total_lines: int
+    covered_branches: int
+    total_branches: int
+    per_function: dict[str, float]  # Emma benzeri ağaç görünümü için
+
     @property
     def line_rate(self) -> float: ...
 
+
 @dataclass
 class MetricSet:
-    values: dict[str, float]                # anahtarlar metrics.METRIC_NAMES
+    values: dict[str, float]  # anahtarlar metrics.METRIC_NAMES
+
 
 @dataclass
 class MutationReport:
-    total: int; killed: int; survived: int; timeout: int
+    total: int
+    killed: int
+    survived: int
+    timeout: int
+
     @property
-    def score(self) -> float: ...           # (killed + timeout) / total
+    def score(self) -> float: ...  # (killed + timeout) / total
+
 
 @dataclass
 class RunStats:
-    generated: int; compiled: int; execution_time_s: float
+    generated: int
+    compiled: int
+    execution_time_s: float
+
     @property
     def compilation_rate(self) -> float: ...  # compiled / generated
 
+
 @dataclass
 class Prediction:
-    estimated_bugs: float; optimum_test_count: int; method: str
+    estimated_bugs: float
+    optimum_test_count: int
+    method: str
 ```
 
 ## 3. Modüller
