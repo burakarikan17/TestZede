@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "testzede"
+version = "0.1.0"
+description = "Reinforcement Learning ile otomatik test case hazırlama"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "PySide6",
+    "qt-material",
+    "networkx",
+    "matplotlib",
+    "radon",
+    "coverage",
+    "pytest",
+    "gymnasium",
+    "numpy",
+    "pandas",
+    "jinja2",
+    "openpyxl",
+    "scikit-learn",
+]
+
+[project.optional-dependencies]
+dev = ["pytest-cov", "pytest-qt", "ruff", "pre-commit"]
+
+[project.scripts]
+testzede = "testzede.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

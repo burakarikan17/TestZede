@@ -1,0 +1,17 @@
+# RL ödül ağırlıkları ve çalıştırma ayarları (geliştirme setinde ayarlanır,
+# sonra configs/frozen.yaml olarak dondurulur).
+reward:
+  alpha: 1.0    # Δline
+  beta: 2.0     # Δbranch
+  gamma: 0.5    # yeni çıktı sınıfı
+  delta: 1.0    # geçersiz/timeout cezası
+  epsilon: 0.05 # test başı maliyet
+agent:
+  type: q_learning
+  learning_rate: 0.1
+  discount: 0.9
+  epsilon_greedy: 0.2
+  max_steps: 50
+  patience: 10
+sandbox:
+  timeout_s: 10
