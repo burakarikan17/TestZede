@@ -52,7 +52,8 @@ docs: update ARCHITECTURE data split
 - Framework: `pytest` (+ GUI için `pytest-qt`).
 - Her modülün sahibi kendi unit testlerini yazar (`tests/unit/<modül>/`).
 - Çekirdek modüllerde hedef: en az %70 satır coverage.
-- White-box test paketi teslimi `tests/whitebox/` altındadır (en az 3 test case).
+- White-box test paketi teslimi `tests/whitebox/` altındadır (en az 3 test case, pytest ile; 5 puan).
+- Kalite analizi: teslimden önce SonarQube ana sayfa çıktısı veya SourceMonitor (Kiviat, Block Histogram) alınır (5 puan).
 - Çalıştırma: `pytest -q` · coverage ile: `pytest --cov=testzede`
 
 ## Kabul testine hazırlık (Madde-1)

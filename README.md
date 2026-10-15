@@ -8,15 +8,21 @@ Python kodu için çağrı grafiği, kod metrikleri, coverage ve mutasyon analiz
 
 ## Özellikler
 
-| # | Özellik | Modül |
-|---|---------|-------|
-| US-1 | HumanEval kodunun çağrı grafiği olarak gösterimi | `analysis/callgraph.py` |
-| US-2 | 14 kod metriği (LOC, LLOC, SLOC, Halstead ailesi, McCabe, MI …) | `analysis/metrics.py` |
-| US-3 | Proje kodu + test kodu ile coverage (satır/branch, fonksiyon bazlı) ve RL ile artırımı | `execution/`, `rl/` |
-| US-4 | RL ajanı ile test case üretimi ve istatistik ekranı | `rl/` |
-| US-5 | Mutation Score, Test Execution Time, Compilation Rate | `mutation/`, `execution/` |
-| US-6 | 4 veri setinde toplu test ve veri seti bazlı rapor (CSV/HTML/XLSX) | `datasets/`, `batch/` |
-| US-7 | Kod metriklerinden tahmini hata sayısı ve optimum test sayısı | `prediction/` |
+| # | Özellik | Modül | Puan |
+|---|---------|-------|------|
+| US-1 | HumanEval kodunun çağrı grafiği olarak gösterimi | `analysis/callgraph.py` | 10 |
+| US-2 | 14 kod metriği (en az 10 gerekli; LOC, LLOC, SLOC, Halstead ailesi, McCabe, MI …) | `analysis/metrics.py` | 10 |
+| US-3 | Proje kodu + test kodu ile RL tabanlı cover rate hesabı (satır/branch, fonksiyon bazlı) | `execution/`, `rl/` | 10 |
+| US-4 | Cover Rate ve test sayısının gösterimi (RL ile test üretimi, istatistik ekranı) | `rl/` | 10 |
+| US-5 | Mutation Score, Test Execution Time, Compilation Rate | `mutation/`, `execution/` | 10 |
+| US-6 | 4 veri setinde toplu test ve veri seti bazlı rapor (CSV/HTML/XLSX) | `datasets/`, `batch/` | 10 |
+| Opsiyonel | Kod metriklerinden tahmini hata sayısı ve optimum test sayısı (puansız; en sona bırakılır) | `prediction/` | – |
+
+Diğer teslimler: Yazılım Şartnamesi (3), Task board (2), UI/UX ve tasarım kalıpları (2),
+STD en az 5 test case (3), White-box en az 3 test (5), Kalite analizi — SonarQube
+veya SourceMonitor çıktısı (5). **Toplam: 80 puan.**
+Kabul testinde bulunan her hata −3, çökme −10 puandır. 4 ek uygulama (Test Bird,
+Snake Game, Amiral Battı, Labirent ve Fare) ayrı repolardadır.
 
 ## Teknoloji
 
