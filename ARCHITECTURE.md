@@ -124,7 +124,7 @@ Her **epizot** bir `CodeUnit` (test edilen fonksiyon) üzerinde geçer.
 | Ajan | Temel: tabular Q-learning (ε-greedy). Opsiyonel karşılaştırma: gymnasium uyumlu ortam üzerinde stable-baselines3 PPO. |
 
 Çıktı: `TestCase` listesi + epizot boyunca coverage eğrisi. Coverage eğrisi
-US-7'de optimum test sayısının hedef değeri olarak kullanılır.
+opsiyonel tahmin modülünde optimum test sayısının hedef değeri olarak kullanılır.
 
 ### mutation (US-5)
 Kendi AST tabanlı motorumuz kullanılır (Windows ve macOS'ta aynı davranış için).
@@ -132,7 +132,7 @@ Operatörler (**Strategy** kalıbı): AOR (`+`↔`-`, `*`↔`/`), ROR (`<`↔`<=
 COR (`and`↔`or`), sabit değiştirme (`0`↔`1`), `return` değerini `None` yapma.
 Her mutant sandbox'ta test paketine karşı koşturulur.
 
-### prediction (US-7)
+### prediction (opsiyonel, puansız)
 - **Temel tahmin:** Halstead teslim edilen hata sayısı `B = V / 3000`; McCabe
   karmaşıklığı ise minimum bağımsız yol (basis path) test sayısı olarak alınır.
 - **Öğrenilmiş tahmin:** Geliştirme setinde RL'nin coverage eğrisinin doygunluğa
@@ -155,7 +155,7 @@ Her mutant sandbox'ta test paketine karşı koşturulur.
 | Bağımsız dış test | HumanEval + 67_Python_Code_Small | Genellenebilirlik |
 
 Kurallar:
-1. Lite, TestGenEval'in alt kümesidir. Ana deney setinden Lite örnekleri
+1. Lite, TestGenEval'in alt kümesidir (data leakage'ı önlemek için ekibin yorumu). Ana deney setinden Lite örnekleri
    `make-splits` ile çıkarılır; örnek kimlikleri `data/splits/*.json` dosyasına yazılır.
 2. Ayar dondurulduktan (`configs/frozen.yaml`) sonra ana ve dış test setlerinde
    parametre **değiştirilmez**.
