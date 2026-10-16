@@ -34,3 +34,13 @@ def test_bad_args_or_missing_entry_is_error():
     assert call_function(_unit("def f(a): return a"), "not a tuple").status == "error"
     assert call_function(_unit("def f(a): return a", entry=None), "(1,)").status == "error"
     assert call_function(_unit("def g(): pass"), "()").status == "error"
+
+
+def test_huge_int_repr_error_is_ok_without_value():
+    r = call_function(_unit("def f():\n    return 10 ** 5000"), "()")
+    assert (r.status, r.value_repr) == ("ok", None)
+
+
+def test_oversized_repr_is_dropped_not_truncated():
+    r = call_function(_unit("def f():\n    return 'a' * 20000"), "()")
+    assert (r.status, r.value_repr) == ("ok", None)

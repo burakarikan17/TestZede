@@ -35,9 +35,17 @@ except BaseException:
 else:
     try:
         value = fn(*ast.literal_eval(args_repr))
-        out = {"status": "ok", "value_repr": repr(value)[: int(max_repr)]}
     except BaseException as exc:
         out = {"status": "raised", "exc_type": type(exc).__name__}
+    else:
+        # Kesilmiş repr literal_eval ile farklı bir değere dönüşebilir: kesmek yerine None ver.
+        try:
+            text = repr(value)
+        except BaseException:
+            text = None
+        if text is not None and len(text) > int(max_repr):
+            text = None
+        out = {"status": "ok", "value_repr": text}
 with open(out_path, "w", encoding="utf-8") as f:
     json.dump(out, f)
 """
@@ -46,7 +54,7 @@ with open(out_path, "w", encoding="utf-8") as f:
 @dataclass(frozen=True)
 class CallResult:
     status: Literal["ok", "raised", "timeout", "error"]
-    value_repr: str | None  # status == "ok" ise repr(dönüş değeri)
+    value_repr: str | None  # "ok" ise repr(değer); repr yoksa/çok büyükse None
     exc_type: str | None  # status == "raised" ise örn. "ValueError"
     duration_s: float
 
