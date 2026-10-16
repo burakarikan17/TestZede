@@ -7,6 +7,7 @@ from dataset_builders import write_parquet
 from testzede.datasets.errors import DatasetNotFoundError, IntegrityError, SplitError
 from testzede.datasets.hashing import sha256_file
 from testzede.datasets.splits import (
+    EXTRACTOR_VERSION,
     SplitDefinition,
     build_splits,
     load_split_units,
@@ -193,3 +194,21 @@ def test_write_splits_to_an_unwritable_place_is_a_split_error(tmp_path, data_dir
     blocker.write_text("dosya", encoding="utf-8")
     with pytest.raises(SplitError, match="yazılamadı"):
         write_splits(splits, blocker)
+
+
+def test_split_records_the_extractor_version(data_dir):
+    split = build_splits(data_dir)["main"]
+    assert split.extractor_version == EXTRACTOR_VERSION
+    assert json.loads(split.to_json())["extractor_version"] == EXTRACTOR_VERSION
+
+
+def test_split_made_with_older_extraction_rules_is_refused(data_dir):
+    split = build_splits(data_dir)["external"]
+    stale = SplitDefinition.from_json(
+        split.to_json().replace(
+            f'"extractor_version": {EXTRACTOR_VERSION}', '"extractor_version": 1'
+        )
+    )
+    assert stale.extractor_version == 1
+    with pytest.raises(SplitError, match="eski çıkarma kuralları"):
+        load_split_units(stale, data_dir)

@@ -167,10 +167,52 @@ def test_methods_and_nested_definitions_are_not_top_level_units():
     assert names(source) == ["outer"]
 
 
-def test_every_unit_compiles_standalone():
+def test_unit_defines_and_runs_standalone():
     source = "import re\nPAT = 'a+'\ndef f(text):\n    return re.findall(PAT, text)\n"
     unit = extract_functions(source).functions[0].source
     assert run(unit, "f", "caaat") == ["aaa"]
+
+
+def test_annotated_constants_are_rewritten_without_their_annotation():
+    # ``Final`` import'u gerektirirdi; sabit için anotasyon gereksizdir
+    source = "from typing import Final\nLIMIT: Final = 3\n\ndef f(x):\n    return x + LIMIT\n"
+    unit = extract_functions(source).functions[0].source
+    assert "Final" not in unit
+    assert "LIMIT = 3" in unit
+    assert run(unit, "f", 4) == 7
+
+
+def test_annotated_names_without_a_literal_value_are_rejected():
+    assert names("LIMIT: int\ndef f(x):\n    return x + LIMIT\n") == []
+    assert names("LIMIT: int = compute()\ndef f(x):\n    return x + LIMIT\n") == []
+
+
+CORPUS = [
+    "def a(x):\n    return x\n",
+    (
+        "import math\nfrom typing import List, Optional\nK = -1\nT: tuple = (1, 'x')\n"
+        "def _h(v: List[int]) -> int:\n    return sum(v) * K\n"
+        "def b(v: List[int], d: Optional[int] = None) -> int:\n"
+        "    return _h(v) + math.floor(T[0])\n"
+    ),
+    (
+        "import re\nfrom collections import OrderedDict as OD\nP = 'a+'\n"
+        "def c(s):\n    return OD(zip(re.findall(P, s), range(9)))\n"
+    ),
+    "def d(n):\n    return 1 if n < 2 else n * d(n - 1)\n",
+    "import json\ndef e(x, *rest, key=len, **kw):\n    return json.dumps([key(x), len(rest), kw])\n",
+]
+
+
+@pytest.mark.parametrize("source", CORPUS)
+def test_every_extracted_unit_can_be_defined(source):
+    # compile() eksik import'u yakalamaz; tanımı gerçekten çalıştırıyoruz
+    functions = extract_functions(source).functions
+    assert functions
+    for function in functions:
+        namespace: dict = {}
+        exec(compile(function.source, "<unit>", "exec"), namespace)  # noqa: S102
+        assert callable(namespace[function.name])
 
 
 @pytest.mark.parametrize("source", ["def broken(:\n", "x = (\n", "\x00"])

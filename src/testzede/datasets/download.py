@@ -85,8 +85,28 @@ def _fetch(
     progress: ProgressCallback | None,
 ) -> None:
     partial = destination.with_suffix(destination.suffix + ".part")
-    digest = hashlib.sha256()
     url = remote.url(base_url)
+    try:
+        digest = _stream(url, partial, remote.local_name, timeout, progress)
+        if digest != remote.sha256:
+            raise IntegrityError(
+                f"{remote.local_name}: SHA-256 uyuşmuyor (beklenen {remote.sha256[:12]}…, "
+                f"gelen {digest[:12]}…). Dosya silindi; yeniden deneyin."
+            )
+        try:
+            partial.replace(destination)
+        except OSError as exc:
+            raise DownloadError(f"Dosya yerine taşınamadı: {destination} ({exc})") from exc
+    finally:
+        # Hata, Ctrl+C ya da özet uyuşmazlığında yarım dosya kalmaz (başarıda zaten taşınmıştır).
+        partial.unlink(missing_ok=True)
+
+
+def _stream(
+    url: str, partial: Path, name: str, timeout: float, progress: ProgressCallback | None
+) -> str:
+    """``url``'yi ``partial`` dosyasına yazar ve içeriğin SHA-256 özetini döndürür."""
+    digest = hashlib.sha256()
     try:
         with urllib.request.urlopen(url, timeout=timeout) as response, partial.open("wb") as out:
             length = response.headers.get("Content-Length")
@@ -97,19 +117,7 @@ def _fetch(
                 digest.update(chunk)
                 received += len(chunk)
                 if progress:
-                    progress(remote.local_name, received, total)
+                    progress(name, received, total)
     except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
-        partial.unlink(missing_ok=True)
         raise DownloadError(f"İndirilemedi: {url} ({exc})") from exc
-
-    if digest.hexdigest() != remote.sha256:
-        partial.unlink(missing_ok=True)
-        raise IntegrityError(
-            f"{remote.local_name}: SHA-256 uyuşmuyor (beklenen {remote.sha256[:12]}…, "
-            f"gelen {digest.hexdigest()[:12]}…). Dosya silindi; yeniden deneyin."
-        )
-    try:
-        partial.replace(destination)
-    except OSError as exc:
-        partial.unlink(missing_ok=True)
-        raise DownloadError(f"Dosya yerine taşınamadı: {destination} ({exc})") from exc
+    return digest.hexdigest()

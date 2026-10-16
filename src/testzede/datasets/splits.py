@@ -42,7 +42,7 @@ from testzede.datasets.testgeneval import (
 from testzede.domain.models import CodeUnit
 
 SCHEMA_VERSION = 1
-EXTRACTOR_VERSION = 1  # extraction.py kuralları değişirse artırılır
+EXTRACTOR_VERSION = 2  # extraction.py kuralları değişirse artırılır (2: anotasyonlu sabitler)
 LEAKAGE_KEY = "instance_id"
 SPLIT_NAMES = ("development", "main", "external")
 
@@ -57,6 +57,7 @@ class SplitDefinition:
     strict_files: bool = False
     missing_datasets: tuple[str, ...] = ()
     stats: Mapping[str, Mapping[str, int]] = field(default_factory=dict)
+    extractor_version: int = EXTRACTOR_VERSION  # splitin üretildiği çıkarma kuralları sürümü
 
     @property
     def unit_count(self) -> int:
@@ -67,7 +68,7 @@ class SplitDefinition:
         """Kararlı (sıralı, zaman damgasız) JSON metni."""
         payload: dict[str, Any] = {
             "schema_version": SCHEMA_VERSION,
-            "extractor_version": EXTRACTOR_VERSION,
+            "extractor_version": self.extractor_version,
             "name": self.name,
             "leakage_key": LEAKAGE_KEY,
             "strict_files": self.strict_files,
@@ -100,6 +101,7 @@ class SplitDefinition:
                 strict_files=bool(data.get("strict_files", False)),
                 missing_datasets=tuple(data.get("missing_datasets", ())),
                 stats={k: dict(v) for k, v in data.get("stats", {}).items()},
+                extractor_version=int(data.get("extractor_version", 0)),
             )
         except (ValueError, KeyError, TypeError, AttributeError) as exc:
             raise SplitError(f"Split dosyası bozuk: {exc!r}") from exc
@@ -355,8 +357,15 @@ def load_split_units(split: SplitDefinition, data_dir: Path = DEFAULT_DATA_DIR) 
     Raises:
         IntegrityError: Ham dosya split üretildikten sonra değişmişse.
         DatasetNotFoundError: Ham dosya yoksa.
-        SplitError: Splitteki bir birim artık üretilemiyorsa.
+        SplitError: Split eski çıkarma kurallarıyla üretilmişse ya da splitteki bir birim
+            artık üretilemiyorsa.
     """
+    if split.extractor_version != EXTRACTOR_VERSION:
+        raise SplitError(
+            f"'{split.name}' splitı eski çıkarma kurallarıyla üretilmiş "
+            f"(sürüm {split.extractor_version}, güncel {EXTRACTOR_VERSION}). "
+            "Şunu yeniden çalıştırın: testzede make-splits"
+        )
     data_dir = Path(data_dir)
     for relative, expected in split.sources.items():
         path = data_dir / "raw" / relative

@@ -64,7 +64,7 @@ def _cmd_make_splits(args: argparse.Namespace) -> int:
         counts = ", ".join(f"{name}: {len(uids)}" for name, uids in split.units.items())
         print(f"{split.name}: {split.unit_count} birim ({counts}) -> {path}")
         print(f"  SHA-256: {sha256_file(path)}")
-    for name in {n for split in splits.values() for n in split.missing_datasets}:
+    for name in sorted({n for split in splits.values() for n in split.missing_datasets}):
         print(f"Uyarı: '{name}' bulunamadı, atlandı.", file=sys.stderr)
     return 0
 

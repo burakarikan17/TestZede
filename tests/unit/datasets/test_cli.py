@@ -81,3 +81,13 @@ def test_unknown_command_is_an_argparse_error():
 def test_dataset_choice_is_validated():
     with pytest.raises(SystemExit):
         cli.main(["download", "--dataset", "yok"])
+
+
+def test_missing_dataset_warnings_are_sorted(tmp_path, capsys):
+    data_dir = build_data_dir(tmp_path / "data")
+    for name in ("small67", "humaneval"):
+        for path in (data_dir / "raw" / name).iterdir():
+            path.unlink()
+    assert cli.main(["make-splits", "--allow-missing", "--data-dir", str(data_dir)]) == 0
+    warnings = capsys.readouterr().err.splitlines()
+    assert [line.split("'")[1] for line in warnings] == ["humaneval", "small67"]

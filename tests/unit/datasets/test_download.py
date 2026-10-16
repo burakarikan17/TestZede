@@ -77,6 +77,17 @@ def test_checksum_mismatch_raises_and_leaves_no_file(server, tmp_path):
     assert not list(folder.iterdir())
 
 
+def test_interrupt_leaves_no_partial_file(server, tmp_path):
+    base_url, _ = server
+
+    def interrupt(*_args):
+        raise KeyboardInterrupt
+
+    with pytest.raises(KeyboardInterrupt):
+        download_dataset("demo", tmp_path, base_url=base_url, progress=interrupt)
+    assert not list((tmp_path / "raw" / "demo").iterdir())
+
+
 def test_network_failure_is_a_download_error(tmp_path, monkeypatch):
     remote = RemoteFile("org/none", REVISION, "data/x.parquet", "x.parquet", "0" * 64)
     monkeypatch.setitem(download.SOURCES, "demo", (remote,))

@@ -440,6 +440,11 @@ class _ModuleAnalysis:
     def _segment(self, node: ast.stmt) -> str | None:
         if isinstance(node, ast.Import | ast.ImportFrom):
             return ast.unparse(node)
+        if isinstance(node, ast.AnnAssign):
+            # ``LIMIT: Final = 3`` → ``LIMIT = 3``: anotasyon çalışma anında değerlendirilir
+            # ve ``Final`` gibi isimlerin import'unu gerektirir; sabit için gereksizdir.
+            plain = ast.Assign(targets=[node.target], value=node.value, type_comment=None)
+            return ast.unparse(ast.copy_location(plain, node))
         return ast.get_source_segment(self._source, node)
 
     def _build(
