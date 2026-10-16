@@ -141,7 +141,28 @@ Her mutant sandbox'ta test paketine karşı koşturulur.
 
 ### datasets + batch (US-6)
 - **Factory** kalıbı: `DatasetFactory.get("humaneval")` → `DatasetLoader` →
-  `Iterable[CodeUnit]`.
+  `Iterable[CodeUnit]`. Her yükleyici `load()` ile bir `LoadResult` döndürür: birimler
+  (`units`), atlanan örnekler (`skipped`, neden koduyla) ve sayaçlar (`stats`). Hiçbir
+  örnek sessizce kaybolmaz.
+- **Ham veri:** `data/raw/<veri_seti>/` altında. `download` dosyaları sabit bir Hugging
+  Face revizyonundan indirir ve SHA-256 ile doğrular (yalnızca standart kütüphane).
+
+| Veri seti | Birim | `uid` |
+|---|---|---|
+| HumanEval | Görev: `prompt + canonical_solution` (referans çözüm, oracle için) | `HumanEval/12` |
+| 67_Python_Code_Small | Excel satırı: tek fonksiyon | `small67/<satır>` |
+| TestGenEval, TestGenEvalLite | **Fonksiyon**: repo dosyasından çıkarılan, tek başına çalışan fonksiyon | `<instance_id>::<dosya>::<fonksiyon>` |
+
+`CodeUnit.seed_examples`, entry-point fonksiyonunun docstring'indeki `>>>` çağrılarıdır.
+
+**Fonksiyon çıkarma (`datasets/extraction.py`).** TestGenEval dosyalarının tamamı tek
+başına çalışmaz (dosya düzeyinde yalnızca %1'i standart kütüphaneye dayanır). Bu yüzden
+her dosyadan bağımsız fonksiyonlar, ihtiyaç duydukları import, değiştirilemez sabit ve
+yardımcı fonksiyonlarla birlikte çıkarılır. Serbest isimler `symtable` ile bulunur.
+Reddedilenler neden koduyla sayılır: özel / dekoratörlü / `async` / parametresiz
+fonksiyonlar, `global` kullananlar, dosya sistemi-ağ-süreç-rastgelelik gibi yan etkili
+modüllere ya da `open`/`input` gibi yerleşiklere dayananlar ve repo içi ya da üçüncü
+parti isimlere dayananlar. Sınıf metotları kapsam dışıdır.
 - `batch/runner.py`: her `CodeUnit` için metrik → RL → coverage → mutasyon → tahmin
   hattını çalıştırır. Sonuçları veri seti bazında `reports/` altına CSV/HTML/XLSX
   olarak yazar.
@@ -154,12 +175,23 @@ Her mutant sandbox'ta test paketine karşı koşturulur.
 | Ana deney | TestGenEval **eksi** TestGenEvalLite örnekleri | Coverage, mutation score, süre |
 | Bağımsız dış test | HumanEval + 67_Python_Code_Small | Genellenebilirlik |
 
-Kurallar:
-1. Lite, TestGenEval'in alt kümesidir (data leakage'ı önlemek için ekibin yorumu). Ana deney setinden Lite örnekleri
-   `make-splits` ile çıkarılır; örnek kimlikleri `data/splits/*.json` dosyasına yazılır.
-2. Ayar dondurulduktan (`configs/frozen.yaml`) sonra ana ve dış test setlerinde
+Splitler `testzede make-splits` ile `data/splits/{development,main,external}.json`
+olarak üretilir. Kurallar:
+1. Lite, TestGenEval'in alt kümesidir. Ana deney setinden Lite örnekleri **`instance_id`**
+   ile çıkarılır (iki veri setinin `id` sütunları farklıdır, yalnızca `instance_id` ortaktır;
+   `id` ile çıkarma hiçbir şeyi çıkarmaz ve sızıntı sessizce kalır). Bu ayrım ekibin
+   yorumudur ve data leakage'ı önlemek içindir.
+2. Aynı fonksiyon farklı commit'lerde tekrar eder. Ana deneyden, geliştirme kümesindekiyle
+   **birebir aynı kaynaklı** birimler de çıkarılır ve her küme kendi içinde tekilleştirilir.
+   Lite ile ortak *dosyalar* (aynı dosya, farklı örnek) varsayılan olarak çıkarılmaz ama
+   sayısı split içinde (`stats.leakage`) raporlanır; `--strict-files` bunları da çıkarır.
+3. Her split dosyası kullandığı ham dosyaların SHA-256 özetini taşır; veri değişirse
+   `load_split_units` hata verir. Split dosyaları zaman damgası içermez: aynı veriden
+   her zaman aynı baytlar çıkar. Her rapor, kullanılan split dosyasının hash değerini içerir.
+4. `make-splits`, development ve main arasında ortak `instance_id` ya da `uid` bulursa
+   `SplitError` ile durur (`verify_no_leakage`).
+5. Ayar dondurulduktan (`configs/frozen.yaml`) sonra ana ve dış test setlerinde
    parametre **değiştirilmez**.
-3. Her rapor, kullanılan split dosyasının hash değerini içerir.
 
 ## 5. Tasarım kalıpları
 

@@ -61,10 +61,21 @@ Veri setleri repoya **commit edilmez**, `data/raw/` altına indirilir:
 ```bash
 testzede download --dataset humaneval
 testzede download --dataset testgeneval-lite
-testzede download --dataset testgeneval      # büyük, Docker gerektirir
-# 67_Python_Code_Small_DataSet: ders sorumlusundan alınıp data/raw/small67/ altına koyulur
+testzede download --dataset testgeneval      # ~58 MB, Docker gerekmez
+testzede download --dataset all              # üçünü birden
+# 67_Python_Code_Small_DataSet: ders sorumlusundan alınan .xlsx dosyası data/raw/small67/ altına koyulur
 testzede make-splits                          # data leakage'sız ayrımı üretir
 ```
+
+İndirilen dosyalar sabit bir revizyona ve SHA-256 özetine bağlıdır; bozuk ya da
+değişmiş dosya reddedilir. `make-splits`, `data/splits/` altına üç dosya yazar:
+`development` (TestGenEvalLite), `main` (TestGenEval eksi Lite) ve `external`
+(HumanEval + Small67). Seçenekler: `--strict-files` (ana deneyden Lite ile ortak
+dosyaları da çıkarır), `--allow-missing` (eksik veri setlerini uyarıyla atlar).
+
+TestGenEval örnekleri gerçek repo dosyalarıdır; bu yüzden birim **fonksiyon düzeyindedir**
+ve yalnızca standart kütüphaneye dayanan, tek başına çalışabilen fonksiyonlar alınır
+(ayrıntı: [ARCHITECTURE.md](ARCHITECTURE.md) §3 ve §4).
 
 ## Çalıştırma
 
