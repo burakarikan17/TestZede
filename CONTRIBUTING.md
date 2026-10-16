@@ -68,8 +68,10 @@ Kabul testinde bulunan her hata −3, programı çökerten her hata −10 puand�
 
 ## Yeni bir şey eklemek
 
-- **Yeni veri seti:** `datasets/base.py`'deki `DatasetLoader`'dan türetin,
-  `DatasetFactory`'ye kaydedin, `make-splits`'e ekleyin.
+- **Yeni veri seti:** `datasets/base.py`'deki `DatasetLoader`'dan türetin (`name`, `load`,
+  `source_files`), `DatasetFactory.register` ile kaydedin; indirilebiliyorsa `datasets/sources.py`'ye
+  sabit revizyon ve SHA-256 ile ekleyin, `datasets/splits.py`'de ilgili splite bağlayın.
+  Çevrilemeyen örnekleri sessizce atmayın, `SkippedUnit` olarak neden koduyla döndürün.
 - **Yeni RL eylemi:** `rl/actions.py`'de `Action` strategy sınıfı yazın,
   `ACTION_REGISTRY`'ye ekleyin. Durum uzayı değişirse ARCHITECTURE'ı güncelleyin.
 - **Yeni mutasyon operatörü:** `mutation/operators.py`'de `MutationOperator`'dan türetin.
