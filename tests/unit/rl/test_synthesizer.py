@@ -23,6 +23,7 @@ def test_ok_value_becomes_equality_assert():
         ("True", "    assert f(0) is True\n"),
         ("0.30000000000000004", "    assert f(0) == pytest.approx(0.30000000000000004)\n"),
         ("<object at 0x1>", "    f(0)\n"),
+        (None, "    f(0)\n"),
         ("nan", "    f(0)\n"),
         ("{'a': [1]}", "    assert f(0) == {'a': [1]}\n"),
     ],

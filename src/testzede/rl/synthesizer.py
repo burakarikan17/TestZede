@@ -44,7 +44,8 @@ def _exception_name(exc_type: str | None) -> str:
     return "Exception"
 
 
-def _assertion(call: str, value_repr: str) -> str:
+def _assertion(call: str, value_repr: str | None) -> str:
+    # value_repr None: değer alınamadı (örn. çok uzun repr kesildi); "is None" yazılmaz.
     ok, value = parse_value(value_repr)
     if not ok:
         # Literal olmayan dönüş (nesne, nan, inf): yalnızca çağrının hatasız bittiği sınanır.
@@ -62,7 +63,7 @@ def synthesize(entry_point: str, args: tuple, outcome: CallOutcome, step: int) -
     """Oracle sonucundan test üretir; girdi geçersizse (timeout/error) ``None`` döner."""
     call = format_call(entry_point, args)
     if outcome.status == "ok":
-        body = _assertion(call, outcome.value_repr or "None")
+        body = _assertion(call, outcome.value_repr)
     elif outcome.status == "raised":
         body = f"    with pytest.raises({_exception_name(outcome.exc_type)}):\n        {call}"
     else:
