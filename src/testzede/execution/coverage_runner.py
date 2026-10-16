@@ -14,13 +14,17 @@ class ExecutionResult:
     coverage: CoverageReport
     stats: RunStats
     covered_lines: frozenset[int]
-    covered_branches: frozenset[tuple[int, int]]  # coverage.py arc'ları (çıkış için negatif olabilir)
+    # coverage.py arc'ları (çıkış için negatif olabilir)
+    covered_branches: frozenset[tuple[int, int]]
     all_lines: frozenset[int]
     all_branches: frozenset[tuple[int, int]]
-    test_outcomes: dict[str, Literal["passed", "failed", "error", "timeout"]]  # anahtar: TestCase.name
+    # anahtar: TestCase.name
+    test_outcomes: dict[str, Literal["passed", "failed", "error", "timeout"]]
 
 
-def run_tests(unit: CodeUnit, tests: Sequence[TestCase], *, timeout: float = 10.0) -> ExecutionResult:
+def run_tests(
+    unit: CodeUnit, tests: Sequence[TestCase], *, timeout: float = 10.0
+) -> ExecutionResult:
     """Testleri alt süreçte koşturur; yalnızca ``unit.source`` ölçülür.
 
     Hiçbir koşulda istisna fırlatmaz; derleme hatası/timeout ``test_outcomes`` içinde döner.
