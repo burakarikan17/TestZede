@@ -30,10 +30,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from testzede.gui.pages.base import BasePage
+from testzede.gui.state import AppState
 from testzede.gui.worker import TaskRunner, Worker
 from testzede.services import rl_service
 from testzede.services.errors import ServiceError
 
+PAGE_TITLE = "RL Test Üretimi"
 _MONO_FALLBACKS = ("Menlo", "Consolas", "DejaVu Sans Mono", "Courier New")
 
 
@@ -70,13 +73,11 @@ class StatTile(QFrame):
         self.detail.setText(detail)
 
 
-class RLPage(QWidget):
+class RLPage(BasePage):
     """RL ile test üretim sayfası."""
 
-    title = "RL Test Üretimi"
-
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
+    def __init__(self, state: AppState | None = None, parent: QWidget | None = None) -> None:
+        super().__init__(PAGE_TITLE, state if state is not None else AppState(), parent)
         self._tasks = TaskRunner(self)
         self._result: rl_service.GenerationResult | None = None
         self._module_name: str | None = None  # açılan kaynak dosyanın modül adı

@@ -235,8 +235,13 @@ PySide6 + qt-material (Material Design teması). Sayfalar ve sahipleri:
 Uzun işlemlerin tamamı `QThread` içinde çalışır; GUI iş parçacığı asla bloklanmaz.
 
 - Giriş: `testzede gui` → `gui/app.py` (qt-material teması, global `sys.excepthook`).
-- `gui/main_window.py`: soldaki listeden sayfa seçilir. Yeni sayfa `PAGES` demetine eklenir;
-  sayfa `title` taşır, arka planda iş çalıştırıyorsa `shutdown()` tanımlar.
+- `gui/main_window.py`: soldaki listeden sayfa seçilir. Yeni sayfa `PAGES` demetine yukarıdaki
+  sırayla eklenir; `PAGES` öğesi `AppState` alıp sayfa döndüren bir fabrikadır (sayfa sınıfının
+  kendisi olabilir). Sayfa seçilince `on_enter()` çağrılır; arka planda iş çalıştıran sayfa
+  `shutdown()` tanımlar (pencere kapanırken çağrılır).
+- `gui/pages/base.py`: `BasePage(title, state)` tüm sayfaların tabanı; `title` ve boş `on_enter()`.
+- `gui/state.py`: `AppState` sayfalar arasında paylaşılan durum (yüklenen kod, testler, son
+  coverage ve mutasyon sonucu). Tek örnek `MainWindow` tarafından oluşturulur.
 - `gui/worker.py`: `TaskRunner` işi `QThread`'de çalıştırır; sonuç, ilerleme ve hata
   sinyalle gelir. `ServiceError` mesajı olduğu gibi gösterilir.
 - Sayfalar yalnızca `services/` cephelerini kullanır (`rl_service`, `batch_service`).
