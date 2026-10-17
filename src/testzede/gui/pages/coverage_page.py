@@ -54,6 +54,10 @@ OUTCOME_COLORS = {
     "timeout": "#ffab40",
 }
 _STATUS_COLORS = {"ok": "#69f0ae", "error": "#ff5252", "warn": "#ffab40", "info": ""}
+FUNCTION_COLUMN_TIP = (
+    "Satır ve dal kapsamasının birleşik yüzdesi (coverage.py). "
+    "Üstteki 'Satır' yalnızca satır kapsamasıdır."
+)
 _STALE_NOTE = "Not: Kaynak kod veya testler değişti, bu sonuç eski olabilir. Yeniden çalıştırın."
 
 
@@ -117,6 +121,10 @@ class CoveragePage(BasePage):
         font.setFixedPitch(True)
         self.source_view.setFont(font)
         self.function_table = _readonly_table(["Fonksiyon", "Kapsama %"])
+        header = self.function_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self.function_table.horizontalHeaderItem(1).setToolTip(FUNCTION_COLUMN_TIP)
         self.test_table = _readonly_table(["Test", "Sonuç"])
 
         top = QHBoxLayout()
