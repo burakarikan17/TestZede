@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import re
 import subprocess
 import sys
@@ -23,6 +24,15 @@ Outcome = Literal["passed", "failed", "error", "timeout"]
 _MODULE_RE = re.compile(r"test_(\d{4,})$")
 # Aynı isimli testlerde en kötü sonuç kazanır.
 _SEVERITY: dict[str, int] = {"passed": 0, "failed": 1, "error": 2, "timeout": 3}
+_PYTEST_ARGS = [
+    "-m",
+    "pytest",
+    "-q",
+    "-p",
+    "no:cacheprovider",
+    "--continue-on-collection-errors",
+    "--junitxml=report.xml",
+]
 
 
 @dataclass
@@ -54,19 +64,38 @@ def run_tests(
         outcomes = {i: "error" for i in range(len(tests))}
     elapsed = time.perf_counter() - start
 
+    names = _merge_by_name(tests, outcomes)
+    compiled = sum(1 for i in range(len(tests)) if outcomes.get(i, "error") != "error")
+    return _build_result(data, names, len(tests), compiled, elapsed)
+
+
+def run_outcomes(
+    unit: CodeUnit, tests: Sequence[TestCase], *, timeout: float = 10.0
+) -> dict[str, Outcome]:
+    """Testleri coverage'sız (hızlı yol) koşturur; ``run_tests(...).test_outcomes`` ile aynı sonucu verir.
+
+    Hiçbir koşulda istisna fırlatmaz.
+    """
+    try:
+        outcomes, _ = _run(unit, tests, timeout, with_coverage=False)
+    except Exception:  # noqa: BLE001 - Madde-1: hiçbir durumda istisna sızmaz
+        outcomes = {i: "error" for i in range(len(tests))}
+    return _merge_by_name(tests, outcomes)
+
+
+def _merge_by_name(tests: Sequence[TestCase], outcomes: dict[int, Outcome]) -> dict[str, Outcome]:
+    """Dizin bazlı sonuçları test adına çevirir; aynı isimde en kötü sonuç kazanır."""
     names: dict[str, Outcome] = {}
     for i, test in enumerate(tests):
         new = outcomes.get(i, "error")
         old = names.get(test.name)
         if old is None or _SEVERITY[new] > _SEVERITY[old]:
             names[test.name] = new
-    compiled = sum(1 for i in range(len(tests)) if outcomes.get(i, "error") != "error")
-    return _build_result(data, names, len(tests), compiled, elapsed)
+    return names
 
 
-def _run(
-    unit: CodeUnit, tests: Sequence[TestCase], timeout: float
-) -> tuple[dict[int, Outcome], dict | None]:
+def _split_runnable(tests: Sequence[TestCase]) -> tuple[dict[int, Outcome], list[int]]:
+    """Sözdizimi hatalı testleri "error" işaretler; çalıştırılabilirlerin dizinini döndürür."""
     outcomes: dict[int, Outcome] = {}
     runnable: list[int] = []
     for i, test in enumerate(tests):
@@ -76,41 +105,48 @@ def _run(
             outcomes[i] = "error"
         else:
             runnable.append(i)
-    if not runnable:
-        return outcomes, None
+    return outcomes, runnable
 
+
+def _write_workspace(
+    tmp_dir: Path, unit: CodeUnit, tests: Sequence[TestCase], runnable: list[int]
+) -> None:
+    """Kaynağı ve her çalıştırılabilir testi (ortak başlıkla) geçici dizine yazar."""
     header = f"import pytest\nimport {TARGET_MODULE}\nfrom {TARGET_MODULE} import *  # noqa\n"
     if unit.entry_point:
         header += f"from {TARGET_MODULE} import {unit.entry_point}\n"
+    (tmp_dir / f"{TARGET_MODULE}.py").write_text(unit.source, encoding="utf-8")
+    for i in runnable:
+        path = tmp_dir / f"test_{i:04d}.py"
+        path.write_text(header + "\n" + tests[i].code + "\n", encoding="utf-8")
+
+
+def _pytest_env() -> dict[str, str]:
+    """Pytest alt süreci için ortam: eklenti otomatik yüklemesi kapalı (başlatmayı hızlandırır)."""
+    return {**os.environ, "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"}
+
+
+def _run(
+    unit: CodeUnit, tests: Sequence[TestCase], timeout: float, *, with_coverage: bool = True
+) -> tuple[dict[int, Outcome], dict | None]:
+    outcomes, runnable = _split_runnable(tests)
+    if not runnable:
+        return outcomes, None
 
     with tempfile.TemporaryDirectory(prefix="testzede_run_") as tmp:
         tmp_dir = Path(tmp)
-        (tmp_dir / f"{TARGET_MODULE}.py").write_text(unit.source, encoding="utf-8")
-        for i in runnable:
-            path = tmp_dir / f"test_{i:04d}.py"
-            path.write_text(header + "\n" + tests[i].code + "\n", encoding="utf-8")
+        _write_workspace(tmp_dir, unit, tests, runnable)
 
-        cmd = [
-            sys.executable,
-            "-I",
-            "-m",
-            "coverage",
-            "run",
-            "--branch",
-            f"--include={TARGET_MODULE}.py",
-            "-m",
-            "pytest",
-            "-q",
-            "-p",
-            "no:cacheprovider",
-            "--continue-on-collection-errors",
-            "--junitxml=report.xml",
-        ]
+        cmd = [sys.executable, "-I"]
+        if with_coverage:
+            cmd += ["-m", "coverage", "run", "--branch", f"--include={TARGET_MODULE}.py"]
+        cmd += _PYTEST_ARGS
         try:
             subprocess.run(
                 cmd,
                 check=False,
                 cwd=tmp,
+                env=_pytest_env(),
                 timeout=timeout,
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
@@ -124,7 +160,7 @@ def _run(
         for i in runnable:
             # Hiç raporlanmayan modül: test fonksiyonu yok ya da süreç çöktü.
             outcomes[i] = reported.get(i, "error")
-        return outcomes, _coverage_json(tmp_dir)
+        return outcomes, _coverage_json(tmp_dir) if with_coverage else None
 
 
 def _parse_junit(path: Path) -> dict[int, Outcome]:

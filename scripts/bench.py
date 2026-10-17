@@ -17,7 +17,7 @@ from pathlib import Path
 from testzede.domain.models import CodeUnit, TestCase
 from testzede.execution.coverage_runner import run_tests
 from testzede.execution.sandbox import TARGET_MODULE, call_function
-from testzede.mutation.engine import MutationEngine
+from testzede.mutation.engine import MutationEngine, _default_workers
 from testzede.mutation.operators import generate_all
 
 SIMPLE = "def f(a):\n    if a > 0:\n        return 1\n    return 2\n"
@@ -134,16 +134,20 @@ def main() -> None:
         row(f"  coverage run + pytest alt süreci ({count})", [p[0] for p in parts])
         row(f"  coverage json adımı ({count})", [p[1] for p in parts])
 
-    print("\n[3] MutationEngine.run")
+    print("\n[3] MutationEngine.run_detailed (önceki sıralı+coverage'lı sürüm: 24.378 sn)")
     cases = [TestCase(f"t{i}", c, "user") for i, c in enumerate(MUTATED_TESTS)]
     mutants = generate_all(MUTATED)
-    totals = []
-    for _ in range(n):
-        start = time.perf_counter()
-        report, _stats = MutationEngine().run(MUTATED, cases)
-        totals.append(time.perf_counter() - start)
-    row("engine.run (baseline + tüm mutantlar)", totals, f"{len(mutants)} mutant üretildi")
-    row("  mutant başına (baseline dahil bölünmüş)", [t / report.total for t in totals])
+    for label, workers in (("workers=1", 1), (f"workers={_default_workers()} (varsayılan)", None)):
+        totals = []
+        for _ in range(n):
+            start = time.perf_counter()
+            run = MutationEngine(workers=workers).run_detailed(MUTATED, cases)
+            totals.append(time.perf_counter() - start)
+        extra = (
+            f"{len(mutants)} mutant, atlanan {run.skipped_uncovered}, killed {run.report.killed}"
+        )
+        row(f"engine, {label}", totals, extra)
+        row("  mutant başına (toplam / mutant)", [t / run.report.total for t in totals])
 
     print("\n[4] referans alt süreç maliyetleri")
     with tempfile.TemporaryDirectory(prefix="bench_") as tmp:
