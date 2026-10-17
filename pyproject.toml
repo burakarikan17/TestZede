@@ -21,6 +21,7 @@ dependencies = [
     "jinja2",
     "openpyxl",
     "pyarrow",
+    "pyyaml",
     "scikit-learn",
 ]
 
