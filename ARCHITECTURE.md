@@ -231,3 +231,10 @@ PySide6 + qt-material (Material Design teması). Sayfalar ve sahipleri:
 | Tahmin | Tahmini hata ve optimum test sayısı | Burak |
 
 Uzun işlemlerin tamamı `QThread` içinde çalışır; GUI iş parçacığı asla bloklanmaz.
+
+- Giriş: `testzede gui` → `gui/app.py` (qt-material teması, global `sys.excepthook`).
+- `gui/main_window.py`: soldaki listeden sayfa seçilir. Yeni sayfa `PAGES` demetine eklenir;
+  sayfa `title` taşır, arka planda iş çalıştırıyorsa `shutdown()` tanımlar.
+- `gui/worker.py`: `TaskRunner` işi `QThread`'de çalıştırır; sonuç, ilerleme ve hata
+  sinyalle gelir. `ServiceError` mesajı olduğu gibi gösterilir.
+- Sayfalar yalnızca `services/` cephelerini kullanır (`rl_service`, `batch_service`).
