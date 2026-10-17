@@ -20,10 +20,12 @@ class AppState:
     tests: list[TestCase] = field(default_factory=list)
     execution_result: ExecutionResult | None = None
     mutation_run: MutationRun | None = None
+    module_name: str | None = None  # kaynak dosyanın adı (uzantısız); yapıştırılan kodda None
 
     def reset(self) -> None:
         """Tüm alanları başlangıç değerlerine döndürür."""
         self.source = ""
+        self.module_name = None
         self.tests = []
         self.execution_result = None
         self.mutation_run = None

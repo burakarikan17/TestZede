@@ -12,6 +12,14 @@ def test_defaults_are_empty():
     assert state.mutation_run is None
 
 
+def test_module_name_defaults_to_none_and_reset_clears_it():
+    state = AppState()
+    assert state.module_name is None
+    state.module_name = "calc"
+    state.reset()
+    assert state.module_name is None
+
+
 def test_instances_do_not_share_the_tests_list():
     a, b = AppState(), AppState()
     a.tests.append(TestCase("t", "def test_t(): pass", "user"))
