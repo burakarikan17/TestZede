@@ -30,7 +30,7 @@ from testzede.domain.models import (
     TestCase,
 )
 from testzede.rl.agent import QLearningAgent
-from testzede.rl.executor import Executor, TestRunOutcome
+from testzede.rl.executor import Executor
 from testzede.rl.signature import SignatureError
 from testzede.rl.trainer import EpisodeResult, RLConfig, generate_tests
 
@@ -81,16 +81,27 @@ class BatchOutcome:
     stopped: bool = False  # kullanıcı yarıda kestiyse
 
 
-def _suite_coverage(suite: TestRunOutcome) -> CoverageReport:
+def measure_suite(
+    unit: CodeUnit, tests: Sequence[TestCase], executor: Executor, *, timeout: float = 60.0
+) -> tuple[CoverageReport | None, float]:
+    """Test paketini bir kez baştan çalıştırır: ``(coverage, süre_s)``.
+
+    Paket boşsa ya da hiçbir satır ölçülemediyse coverage ``None`` döner.
+    """
+    if not tests:
+        return None, 0.0
+    suite = executor.run_tests(unit, tests, timeout=timeout)
+    if not suite.all_lines:
+        return None, suite.stats.execution_time_s
     coverage = getattr(suite, "coverage", None)
-    if isinstance(coverage, CoverageReport):
-        return coverage
-    return CoverageReport(
-        covered_lines=len(suite.covered_lines & suite.all_lines),
-        total_lines=len(suite.all_lines),
-        covered_branches=len(suite.covered_branches & suite.all_branches),
-        total_branches=len(suite.all_branches),
-    )
+    if not isinstance(coverage, CoverageReport):
+        coverage = CoverageReport(
+            covered_lines=len(suite.covered_lines & suite.all_lines),
+            total_lines=len(suite.all_lines),
+            covered_branches=len(suite.covered_branches & suite.all_branches),
+            total_branches=len(suite.all_branches),
+        )
+    return coverage, suite.stats.execution_time_s
 
 
 def run_unit(
@@ -130,13 +141,8 @@ def run_unit(
 
     tests = episode.tests
     result.test_count = len(tests)
-    result.coverage = episode.coverage
-    execution_time = 0.0
-    if tests:
-        suite = executor.run_tests(unit, tests, timeout=config.suite_timeout_s)
-        execution_time = suite.stats.execution_time_s
-        if suite.all_lines:
-            result.coverage = _suite_coverage(suite)
+    coverage, execution_time = measure_suite(unit, tests, executor, timeout=config.suite_timeout_s)
+    result.coverage = coverage or episode.coverage
     result.stats = RunStats(episode.stats.generated, episode.stats.compiled, execution_time)
 
     if config.mutation is not None and tests:

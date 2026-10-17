@@ -4,8 +4,9 @@ Alt komutlar:
     download     veri setlerini ``data/raw/`` altına indirir
     make-splits  data leakage'sız ``data/splits/*.json`` dosyalarını üretir
     batch        bir split ya da veri setinde toplu test çalıştırıp rapor yazar (US-6)
+    gui          masaüstü arayüzünü açar
 
-Diğer alt komutlar (``gui``) kendi modülleri hazır oldukça ``_COMMANDS``'a eklenir. Kullanıcı kaynaklı hatalar ``Hata: ...`` mesajıyla bildirilir, çıkış kodu 1'dir.
+Kullanıcı kaynaklı hatalar ``Hata: ...`` mesajıyla bildirilir, çıkış kodu 1'dir.
 """
 
 from __future__ import annotations
@@ -118,6 +119,12 @@ def _cmd_batch(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_gui(args: argparse.Namespace) -> int:
+    from testzede.gui.app import main as gui_main  # PySide6 yalnızca gerekince yüklenir
+
+    return gui_main([sys.argv[0]])
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="testzede", description="RL ile otomatik test case hazırlama"
@@ -163,6 +170,8 @@ def _build_parser() -> argparse.ArgumentParser:
         "--formats", nargs="+", choices=FORMATS, default=list(FORMATS), help="rapor biçimleri"
     )
 
+    sub.add_parser("gui", help="masaüstü arayüzünü aç")
+
     for command in (download, splits, batch):
         command.add_argument(
             "--data-dir",
@@ -177,6 +186,7 @@ _COMMANDS: dict[str, Callable[[argparse.Namespace], int]] = {
     "download": _cmd_download,
     "make-splits": _cmd_make_splits,
     "batch": _cmd_batch,
+    "gui": _cmd_gui,
 }
 
 
