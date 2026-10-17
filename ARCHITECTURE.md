@@ -122,6 +122,8 @@ Her **epizot** bir `CodeUnit` (test edilen fonksiyon) üzerinde geçer.
 | Bitiş | %100 branch coverage, maksimum adım ya da N adım boyunca coverage artışı olmaması |
 | Oracle | Girdi, referans (canonical) çözümde çalıştırılır; çıktı `assert` olarak yazılır (regresyon oracle'ı). İstisna fırlatan girdiler `pytest.raises` testine dönüşür. |
 | Ajan | Temel: tabular Q-learning (ε-greedy). Opsiyonel karşılaştırma: gymnasium uyumlu ortam üzerinde stable-baselines3 PPO. |
+| Kullanıcı testleri (US-3 artırım) | Kullanıcı kendi test dosyasını verirse ortam her epizoda bu testlerin coverage'ıyla başlar; RL yalnızca kapsanmayan satır/dallar için test ekler. Test dosyasındaki kaynak modülü import'ları `target`'a çevrilir. Kullanıcı testleri zaten tam kapsıyorsa test üretilmez. Sonuç "kullanıcı testleri" ve "kullanıcı testleri + RL" coverage'ı olarak iki değer verir. |
+| Generator fonksiyonları | Oracle ve üretilen testler ilk `GENERATOR_LIMIT` (50) öğeyi `list(islice(f(...), 50))` ile tüketir; aksi halde gövde hiç çalışmaz. |
 
 Çıktı: `TestCase` listesi + epizot boyunca coverage eğrisi. Coverage eğrisi
 opsiyonel tahmin modülünde optimum test sayısının hedef değeri olarak kullanılır.

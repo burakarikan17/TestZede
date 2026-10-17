@@ -167,3 +167,31 @@ def test_load_config_errors(tmp_path):
     empty = tmp_path / "empty.yaml"
     empty.write_text("", encoding="utf-8")
     assert load_config(empty) == {}
+
+
+ROTATIONS = '''def rotations(s, dir=1):
+    """
+    >>> list(rotations([1, 2, 3]))
+    [[1, 2, 3], [2, 3, 1], [3, 1, 2]]
+    """
+    seq = list(s)
+    for i in range(len(seq)):
+        yield seq
+        seq = seq[dir:] + seq[:dir]
+'''
+
+
+def test_generator_unit_body_is_covered(executor):
+    unit = _unit("demo/rot", ROTATIONS, "rotations")
+    result = run_unit(unit, executor, FAST, seed=1)
+    assert result.error is None and result.test_count > 0
+    assert result.coverage.line_rate == 1.0
+    assert result.coverage.covered_branches == result.coverage.total_branches
+
+
+def test_frozen_config_is_valid_and_preferred():
+    from testzede.config import default_config_path
+
+    assert default_config_path() == Path("configs/frozen.yaml")
+    config = BatchConfig.from_mapping(load_config(Path("configs/frozen.yaml")))
+    assert config.rl.episodes == 3 and config.rl.env.patience == 20

@@ -1,7 +1,7 @@
 import pytest
 from conftest import FakeExecutor
 
-from testzede.domain.models import CodeUnit
+from testzede.domain.models import CodeUnit, TestCase
 from testzede.rl.actions import ACTION_NAMES
 from testzede.rl.env import EnvConfig, TestGenEnv
 from testzede.rl.signature import SignatureError
@@ -115,3 +115,38 @@ def test_config_from_mapping_matches_default_yaml_layout():
 def test_config_rejects_unknown_agent_key():
     with pytest.raises(ValueError, match="gamma_typo"):
         RLConfig.from_mapping({"agent": {"gamma_typo": 1}})
+
+
+def _user_test(*calls):
+    # FakeExecutor, TestCase.name ile aynı adlı fonksiyonu çağırır.
+    body = "\n".join(f"    sign({x})" for x in calls)
+    return TestCase(
+        "user_tests", f"from target import sign\n\n\ndef user_tests():\n{body}\n", "user"
+    )
+
+
+def test_episode_starts_from_user_test_coverage(sign_unit, sign_executor):
+    env = TestGenEnv(sign_unit, sign_executor, baseline=[_user_test(5)])
+    env.reset(seed=0)
+    report = env.episode.report()
+    assert (report.covered_lines, report.covered_branches) == (2, 1)
+    assert env.episode.tests == []
+    assert env.baseline_report() == report
+    runs = sign_executor.runs
+    env.reset(seed=1)
+    assert sign_executor.runs == runs  # kullanıcı testleri bir kez çalıştırılır
+
+
+def test_rl_adds_only_missing_coverage(sign_unit, sign_executor):
+    result = generate_tests(
+        sign_unit, sign_executor, RLConfig(episodes=2), seed=0, baseline=[_user_test(5)]
+    )
+    assert result.baseline.covered_branches == 1
+    assert result.coverage.covered_branches == 4
+    assert all(test.origin == "rl" for test in result.tests)
+
+
+def test_no_tests_when_user_tests_cover_everything(sign_unit, sign_executor):
+    result = generate_tests(sign_unit, sign_executor, seed=0, baseline=[_user_test(5, -5, 0)])
+    assert result.tests == [] and result.steps == 0
+    assert result.coverage.covered_branches == result.coverage.total_branches == 4

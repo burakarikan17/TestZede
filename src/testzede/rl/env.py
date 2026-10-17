@@ -11,13 +11,14 @@ ortamda birleştirilir (her adımda tüm paketi baştan koşturmak yavaştır).
 from __future__ import annotations
 
 import random
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from testzede.domain.models import CodeUnit, CoverageReport, RunStats, TestCase
 from testzede.rl.actions import ACTION_NAMES, ACTION_REGISTRY, ActionContext
-from testzede.rl.executor import Executor
+from testzede.rl.executor import Executor, TestRunOutcome
 from testzede.rl.reward import RewardWeights, branch_rate, compute_reward, line_rate
-from testzede.rl.signature import extract_params, parse_seed_inputs
+from testzede.rl.signature import extract_params, is_generator, parse_seed_inputs
 from testzede.rl.state import discretize, state_index
 from testzede.rl.synthesizer import output_class, synthesize
 
@@ -76,6 +77,11 @@ class EpisodeState:
 class TestGenEnv:
     """RL test üretim ortamı.
 
+    ``baseline`` verilirse (kullanıcının kendi testleri, US-3 artırım) her epizot bu
+    testlerin coverage'ıyla başlar; RL yalnızca kapsanmayan satır ve dallar için test
+    ekler. Kullanıcı testleri bir kez çalıştırılır ve epizotlar arasında yeniden kullanılır.
+    Coverage, testlerin geçip geçmemesinden bağımsız olarak çalışan satırlardan sayılır.
+
     Raises:
         SignatureError: ``reset`` sırasında giriş fonksiyonu çözümlenemezse.
     """
@@ -89,8 +95,11 @@ class TestGenEnv:
         *,
         weights: RewardWeights | None = None,
         config: EnvConfig | None = None,
+        baseline: Sequence[TestCase] = (),
     ) -> None:
         self.unit = unit
+        self.baseline = tuple(baseline)
+        self._baseline_run: TestRunOutcome | None = None
         self.executor = executor
         self.weights = weights or RewardWeights()
         self.config = config or EnvConfig()
@@ -99,6 +108,7 @@ class TestGenEnv:
         self._rng = random.Random()
         self._params = ()
         self._seeds: tuple[tuple, ...] = ()
+        self._generator = False
 
     @property
     def entry_point(self) -> str:
@@ -118,8 +128,42 @@ class TestGenEnv:
         self._rng = random.Random(seed)
         self._params = extract_params(self.unit)
         self._seeds = parse_seed_inputs(self.unit)
+        self._generator = is_generator(self.unit)
         self.episode = EpisodeState()
+        run = self.baseline_run()
+        if run is not None:
+            ep = self.episode
+            ep.all_lines |= run.all_lines
+            ep.all_branches |= run.all_branches
+            ep.covered_lines |= run.covered_lines
+            ep.covered_branches |= run.covered_branches
         return self.observe(), {}
+
+    def baseline_run(self) -> TestRunOutcome | None:
+        """Kullanıcı testlerinin (bir kez yapılan) çalıştırma sonucu; test yoksa ``None``."""
+        if self.baseline and self._baseline_run is None:
+            self._baseline_run = self.executor.run_tests(
+                self.unit, self.baseline, timeout=self.config.run_timeout_s
+            )
+        return self._baseline_run
+
+    def baseline_report(self) -> CoverageReport | None:
+        """Yalnızca kullanıcı testlerinin coverage'ı."""
+        run = self.baseline_run()
+        if run is None or not run.all_lines:
+            return None
+        return CoverageReport(
+            covered_lines=len(run.covered_lines & run.all_lines),
+            total_lines=len(run.all_lines),
+            covered_branches=len(run.covered_branches & run.all_branches),
+            total_branches=len(run.all_branches),
+        )
+
+    @property
+    def fully_covered(self) -> bool:
+        """Epizodun şu anki coverage'ı tam mı (kullanıcı testleri zaten her yeri kapsıyorsa
+        epizot hiç adım atmadan biter)."""
+        return self._fully_covered(self.episode.report())
 
     def step(self, action: int) -> tuple[int, float, bool, bool, dict]:
         ep = self.episode
@@ -172,7 +216,7 @@ class TestGenEnv:
             self.unit, repr(tuple(args)), timeout=self.config.call_timeout_s
         )
         ep.execution_time_s += outcome.duration_s
-        test = synthesize(self.entry_point, args, outcome, ep.step)
+        test = synthesize(self.entry_point, args, outcome, ep.step, generator=self._generator)
         if test is None:
             return None, args, ""
 

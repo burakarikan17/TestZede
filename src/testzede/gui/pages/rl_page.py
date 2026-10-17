@@ -1,7 +1,9 @@
 """RL Test Üretimi sayfası (US-3, US-4).
 
-Sol: test edilecek kod. Sağ: RL'nin ürettiği testler. Alt şerit: Test Case
-Statistics, Branch Count, Tested Line Count, Coverage Rate.
+Sol: test edilecek kod ve (opsiyonel) kullanıcının kendi testleri. Sağ: RL'nin
+ürettiği testler. Alt şerit: Test Case Statistics, Branch Count, Tested Line Count,
+Coverage Rate. Kullanıcı testleri verilirse RL onların coverage'ını artırır ve şeritte
+"kullanıcı testleri → + RL" karşılaştırması görünür (US-3).
 """
 
 from __future__ import annotations
@@ -23,6 +25,7 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QSplitter,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -77,8 +80,10 @@ class RLPage(BasePage):
         super().__init__(PAGE_TITLE, state if state is not None else AppState(), parent)
         self._tasks = TaskRunner(self)
         self._result: rl_service.GenerationResult | None = None
+        self._module_name: str | None = None  # açılan kaynak dosyanın modül adı
 
-        self.open_button = QPushButton("Dosya Aç…")
+        self.open_button = QPushButton("Kod Aç…")
+        self.open_tests_button = QPushButton("Test Dosyası Aç…")
         self.function_box = QComboBox()
         self.function_box.setMinimumContentsLength(20)
         self.generate_button = QPushButton("Testleri Üret")
@@ -92,6 +97,7 @@ class RLPage(BasePage):
 
         toolbar = QHBoxLayout()
         toolbar.addWidget(self.open_button)
+        toolbar.addWidget(self.open_tests_button)
         toolbar.addWidget(QLabel("Fonksiyon:"))
         toolbar.addWidget(self.function_box)
         toolbar.addWidget(self.generate_button)
@@ -101,6 +107,15 @@ class RLPage(BasePage):
 
         self.source_edit = _mono_editor()
         self.source_edit.setPlaceholderText("def f(x):\n    ...")
+        self.user_tests_edit = _mono_editor()
+        self.user_tests_edit.setPlaceholderText(
+            "Opsiyonel: bu koda ait mevcut pytest testleriniz.\n"
+            "RL bu testlerin coverage'ıyla başlar ve yalnızca eksik kalan kısımlar için test ekler.\n\n"
+            "from hesap import topla\n\n\ndef test_topla():\n    assert topla(1, 2) == 3"
+        )
+        self.inputs = QTabWidget()
+        self.inputs.addTab(self.source_edit, "Kaynak kod")
+        self.inputs.addTab(self.user_tests_edit, "Kullanıcı testleri (opsiyonel)")
         self.test_list = QListWidget()
         self.test_view = _mono_editor(read_only=True)
         right = QSplitter(Qt.Orientation.Vertical)
@@ -108,7 +123,7 @@ class RLPage(BasePage):
         right.addWidget(self.test_view)
         right.setSizes([150, 350])
         splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(self.source_edit)
+        splitter.addWidget(self.inputs)
         splitter.addWidget(right)
         splitter.setSizes([500, 500])
 
@@ -134,6 +149,7 @@ class RLPage(BasePage):
         self._refresh_timer.timeout.connect(self._refresh_functions)
         self.source_edit.textChanged.connect(self._refresh_timer.start)
         self.open_button.clicked.connect(self._open_file)
+        self.open_tests_button.clicked.connect(self._open_tests)
         self.generate_button.clicked.connect(self._generate)
         self.save_button.clicked.connect(self._save_tests)
         self.test_list.currentRowChanged.connect(self._show_test)
@@ -141,10 +157,18 @@ class RLPage(BasePage):
 
     # ---- dış kullanım -------------------------------------------------------------
 
-    def set_source(self, source: str) -> None:
-        """Kod Yükle sayfası (ya da testler) kodu buradan verir."""
+    def set_source(self, source: str, module_name: str | None = None) -> None:
+        """Kod Yükle sayfası (ya da testler) kodu buradan verir.
+
+        ``module_name``: kaynağın kullanıcı testlerinde import edildiği ad (``hesap.py`` → ``hesap``).
+        """
         self.source_edit.setPlainText(source)
+        self._module_name = module_name
         self._refresh_functions()
+
+    def set_user_tests(self, tests: str) -> None:
+        """Kullanıcının mevcut test dosyasının içeriği."""
+        self.user_tests_edit.setPlainText(tests)
 
     def shutdown(self) -> None:
         self._tasks.shutdown()
@@ -157,9 +181,21 @@ class RLPage(BasePage):
         if not path:
             return
         try:
-            self.set_source(Path(path).read_text(encoding="utf-8"))
+            self.set_source(Path(path).read_text(encoding="utf-8"), Path(path).stem)
         except (OSError, UnicodeDecodeError) as exc:
             self._error(f"Dosya okunamadı: {exc}")
+
+    @Slot()
+    def _open_tests(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(self, "Test dosyası aç", "", "Python (*.py)")
+        if not path:
+            return
+        try:
+            self.set_user_tests(Path(path).read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError) as exc:
+            self._error(f"Dosya okunamadı: {exc}")
+            return
+        self.inputs.setCurrentWidget(self.user_tests_edit)
 
     @Slot()
     def _refresh_functions(self) -> None:
@@ -193,15 +229,26 @@ class RLPage(BasePage):
             self._error("Önce test edilecek fonksiyonu seçin.")
             return
 
-        def job(_: Worker) -> rl_service.GenerationResult:
-            return rl_service.generate(source, entry_point)
+        user_tests = self.user_tests_edit.toPlainText()
+        module_name = self._module_name
 
-        self._set_busy(True, f"{entry_point} için testler üretiliyor…")
+        def job(_: Worker) -> rl_service.GenerationResult:
+            return rl_service.generate(
+                source, entry_point, user_tests=user_tests or None, module_name=module_name
+            )
+
+        what = "kullanıcı testlerine ek " if user_tests.strip() else ""
+        self._set_busy(True, f"{entry_point} için {what}testler üretiliyor…")
         self._tasks.start(job, on_finished=self._on_finished, on_failed=self._on_failed)
 
     @Slot(object)
     def _on_finished(self, result: rl_service.GenerationResult) -> None:
-        self._set_busy(False, f"{len(result.tests)} test üretildi ({result.steps} adım).")
+        message = f"{len(result.tests)} test üretildi ({result.steps} adım)."
+        if result.user_outcome is not None and result.user_outcome != "passed":
+            labels = {"failed": "başarısız", "error": "hatalı", "timeout": "zaman aşımı"}
+            state = labels.get(result.user_outcome, result.user_outcome)
+            message += f" Uyarı: kullanıcı testleri {state}; coverage yine de sayıldı."
+        self._set_busy(False, message)
         self._result = result
         self.test_list.clear()
         self.test_list.addItems([test.name for test in result.tests])
@@ -222,7 +269,11 @@ class RLPage(BasePage):
         if self._result is None or not 0 <= row < len(self._result.tests):
             self.test_view.setPlainText("")
             return
-        self.test_view.setPlainText(self._result.tests[row].code)
+        code = self._result.tests[row].code
+        if self._module_name:  # kaydedilecek dosyadaki gibi kullanıcının modül adıyla göster
+            target = f"from {rl_service.TARGET_MODULE} import "
+            code = code.replace(target, f"from {self._module_name} import ", 1)
+        self.test_view.setPlainText(code)
 
     @Slot()
     def _save_tests(self) -> None:
@@ -233,19 +284,26 @@ class RLPage(BasePage):
         if not path:
             return
         try:
-            Path(path).write_text(rl_service.tests_module(self._result), encoding="utf-8")
+            module = self._module_name or rl_service.TARGET_MODULE
+            Path(path).write_text(rl_service.tests_module(self._result, module), encoding="utf-8")
         except OSError as exc:
             self._error(f"Dosya yazılamadı: {exc}")
             return
-        self.status.setText(f"Kaydedildi: {path} (test edilen kod yanında target.py olmalı)")
+        self.status.setText(f"Kaydedildi: {path} (testler kodu '{module}' modülünden import eder)")
 
     # ---- yardımcılar -------------------------------------------------------------
 
     def _set_busy(self, busy: bool, message: str) -> None:
         self.busy.setVisible(busy)
-        for widget in (self.generate_button, self.open_button, self.function_box):
+        for widget in (
+            self.generate_button,
+            self.open_button,
+            self.open_tests_button,
+            self.function_box,
+        ):
             widget.setEnabled(not busy)
         self.source_edit.setReadOnly(busy)
+        self.user_tests_edit.setReadOnly(busy)
         self.status.setText(message)
 
     def _clear_stats(self) -> None:
@@ -264,10 +322,20 @@ class RLPage(BasePage):
             for tile in (self.tile_branches, self.tile_lines, self.tile_rate):
                 tile.set("-", "ölçülemedi")
             return
-        self.tile_branches.set(f"{cov.covered_branches} / {cov.total_branches}", "kapsanan")
-        self.tile_lines.set(f"{cov.covered_lines} / {cov.total_lines}", "kapsanan")
+        base = result.baseline
+        self.tile_branches.set(
+            f"{cov.covered_branches} / {cov.total_branches}",
+            f"kullanıcı testleri: {base.covered_branches}" if base else "kapsanan",
+        )
+        self.tile_lines.set(
+            f"{cov.covered_lines} / {cov.total_lines}",
+            f"kullanıcı testleri: {base.covered_lines}" if base else "kapsanan",
+        )
         branch = f", branch %{result.branch_rate * 100:.0f}" if cov.total_branches else ""
-        self.tile_rate.set(f"%{cov.line_rate * 100:.0f}", f"satır{branch}")
+        detail = f"satır{branch}"
+        if base:
+            detail = f"kullanıcı testleri %{base.line_rate * 100:.0f} → + RL ({detail})"
+        self.tile_rate.set(f"%{cov.line_rate * 100:.0f}", detail)
 
     def _error(self, message: str) -> None:
         QMessageBox.warning(self, self.title, message)
