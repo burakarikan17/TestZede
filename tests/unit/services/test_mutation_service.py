@@ -5,6 +5,7 @@ from collections.abc import Callable
 import pytest
 
 from testzede.domain.models import MutationReport, RunStats, TestCase
+from testzede.mutation.engine import MutationError
 from testzede.services.errors import ServiceError
 from testzede.services.mutation_service import MutationService
 
@@ -53,3 +54,14 @@ def test_progress_callback_is_forwarded():
     seen: list[tuple[int, int]] = []
     MutationService(engine).run("x = 1", TESTS, progress_callback=lambda d, t: seen.append((d, t)))
     assert seen == [(1, 1)]
+
+
+def test_mutation_error_is_converted_to_service_error():
+    class FailingEngine:
+        def run(self, source, tests, progress_callback=None):
+            raise MutationError("Testler orijinal kodda geçmiyor")
+
+    with pytest.raises(ServiceError, match="Testler orijinal kodda geçmiyor") as info:
+        MutationService(FailingEngine()).run("x = 1", TESTS)
+    assert info.value.message == "Testler orijinal kodda geçmiyor"
+    assert isinstance(info.value.__cause__, MutationError)
