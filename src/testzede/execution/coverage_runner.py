@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import ast
 import json
-import os
 import re
 import subprocess
 import sys
@@ -17,7 +16,7 @@ from pathlib import Path
 from typing import Literal
 
 from testzede.domain.models import CodeUnit, CoverageReport, RunStats, TestCase
-from testzede.execution.sandbox import TARGET_MODULE
+from testzede.execution.sandbox import TARGET_MODULE, child_env
 
 Outcome = Literal["passed", "failed", "error", "timeout"]
 
@@ -123,7 +122,7 @@ def _write_workspace(
 
 def _pytest_env() -> dict[str, str]:
     """Pytest alt süreci için ortam: eklenti otomatik yüklemesi kapalı (başlatmayı hızlandırır)."""
-    return {**os.environ, "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"}
+    return {**child_env(), "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"}
 
 
 def _run(
@@ -193,6 +192,7 @@ def _coverage_json(tmp_dir: Path) -> dict | None:
         [sys.executable, "-I", "-m", "coverage", "json", "-q", "-o", str(out)],
         check=False,
         cwd=tmp_dir,
+        env=child_env(),
         timeout=30,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
