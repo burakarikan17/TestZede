@@ -6,8 +6,10 @@ from PySide6.QtWidgets import QMessageBox
 from testzede.domain.models import CodeUnit, CoverageReport, RunStats, TestCase
 from testzede.gui.main_window import MainWindow
 from testzede.gui.pages import batch_page, rl_page
+from testzede.gui.pages.base import BasePage
 from testzede.gui.pages.batch_page import BatchPage
 from testzede.gui.pages.rl_page import RLPage
+from testzede.gui.state import AppState
 from testzede.services import batch_service
 from testzede.services.batch_service import BatchOutcome, Target, UnitResult
 from testzede.services.errors import ServiceError
@@ -158,6 +160,40 @@ def test_main_window_hosts_pages(qtbot, monkeypatch):
     window.nav.setCurrentRow(1)
     assert window.stack.currentWidget() is window.page("Toplu Test")
     window.close()
+
+
+class _RecordingPage(BasePage):
+    """``on_enter`` çağrılarını sayan sayfa."""
+
+    def __init__(self, title: str, state: AppState) -> None:
+        super().__init__(title, state)
+        self.entered = 0
+
+    def on_enter(self) -> None:
+        self.entered += 1
+
+
+def _recording(title):
+    return lambda state: _RecordingPage(title, state)
+
+
+def test_main_window_calls_on_enter_when_page_is_shown(qtbot):
+    window = MainWindow(pages=(_recording("A"), _recording("B")))
+    qtbot.addWidget(window)
+    first, second = window.pages
+    assert (first.entered, second.entered) == (1, 0)  # ilk sayfa açılışta gösterilir
+    window.nav.setCurrentRow(1)
+    window.nav.setCurrentRow(0)
+    assert (first.entered, second.entered) == (2, 1)
+
+
+def test_main_window_shares_one_state_across_pages(qtbot, monkeypatch):
+    monkeypatch.setattr(batch_page.batch_service, "targets", _fake_targets)
+    state = AppState(source="x = 1")
+    window = MainWindow(state)
+    qtbot.addWidget(window)
+    assert window.state is state
+    assert all(page.state is state for page in window.pages)
 
 
 def test_batch_service_reexports_types():

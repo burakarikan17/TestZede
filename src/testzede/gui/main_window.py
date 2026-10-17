@@ -1,7 +1,8 @@
 """Ana pencere: solda sayfa listesi, sağda seçili sayfa.
 
-Yeni sayfa ``PAGES``'e eklenir. Her sayfa ``title`` taşır; arka planda iş
-çalıştıranlar ``shutdown()`` tanımlar (pencere kapanırken çağrılır).
+Yeni sayfa ``PAGES``'e eklenir. Her sayfa :class:`BasePage`'den türer ve
+paylaşılan :class:`AppState`'i alır; sayfa açıldığında ``on_enter()`` çağrılır.
+Arka planda iş çalıştıranlar ``shutdown()`` tanımlar (pencere kapanırken çağrılır).
 """
 
 from __future__ import annotations
@@ -18,31 +19,34 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from testzede.gui.pages.base import BasePage
 from testzede.gui.pages.batch_page import BatchPage
 from testzede.gui.pages.rl_page import RLPage
+from testzede.gui.state import AppState
 
-PageFactory = Callable[[], QWidget]
+PageFactory = Callable[[AppState], BasePage]
 
 # Diğer sayfalar (Kod Yükle, Çağrı Grafiği, Metrikler, Coverage, Mutasyon, Tahmin)
-# sahipleri tarafından buraya eklenir.
+# sahipleri tarafından ARCHITECTURE.md §6'daki sırayla buraya eklenir.
 PAGES: tuple[PageFactory, ...] = (RLPage, BatchPage)
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, pages: Sequence[PageFactory] = PAGES) -> None:
+    def __init__(self, state: AppState | None = None, pages: Sequence[PageFactory] = PAGES) -> None:
         super().__init__()
+        self.state = state if state is not None else AppState()
         self.setWindowTitle("TestZede")
         self.resize(1200, 780)
         self.nav = QListWidget()
         self.nav.setFixedWidth(200)
         self.stack = QStackedWidget()
-        self.pages: list[QWidget] = []
+        self.pages: list[BasePage] = []
         for factory in pages:
-            page = factory()
+            page = factory(self.state)
             self.pages.append(page)
             self.stack.addWidget(page)
-            self.nav.addItem(getattr(page, "title", type(page).__name__))
-        self.nav.currentRowChanged.connect(self.stack.setCurrentIndex)
+            self.nav.addItem(page.title)
+        self.nav.currentRowChanged.connect(self._on_row_changed)
         self.nav.setCurrentRow(0)
 
         central = QWidget()
@@ -51,12 +55,18 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.stack, 1)
         self.setCentralWidget(central)
 
-    def page(self, title: str) -> QWidget:
-        """Başlığı verilen sayfa (sayfalar arası veri aktarımı için)."""
+    def page(self, title: str) -> BasePage:
+        """Başlığı verilen sayfa."""
         for page in self.pages:
-            if getattr(page, "title", None) == title:
+            if page.title == title:
                 return page
         raise KeyError(title)
+
+    def _on_row_changed(self, row: int) -> None:
+        if row < 0:
+            return
+        self.stack.setCurrentIndex(row)
+        self.pages[row].on_enter()
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.setCursor(Qt.CursorShape.WaitCursor)

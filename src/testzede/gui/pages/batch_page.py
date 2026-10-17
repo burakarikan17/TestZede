@@ -23,9 +23,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from testzede.gui.pages.base import BasePage
+from testzede.gui.state import AppState
 from testzede.gui.worker import TaskRunner, Worker
 from testzede.services import batch_service
 from testzede.services.batch_service import FORMATS, BatchOutcome, UnitResult
+
+PAGE_TITLE = "Toplu Test"
 
 COLUMNS = (
     "Birim",
@@ -59,19 +63,18 @@ def _row(result: UnitResult) -> list[str]:
     ]
 
 
-class BatchPage(QWidget):
+class BatchPage(BasePage):
     """Toplu test sayfası."""
-
-    title = "Toplu Test"
 
     def __init__(
         self,
+        state: AppState | None = None,
         parent: QWidget | None = None,
         *,
         data_dir: Path = Path("data"),
         reports_root: Path = Path("reports"),
     ) -> None:
-        super().__init__(parent)
+        super().__init__(PAGE_TITLE, state if state is not None else AppState(), parent)
         self.data_dir = data_dir
         self.reports_root = reports_root
         self._tasks = TaskRunner(self)
