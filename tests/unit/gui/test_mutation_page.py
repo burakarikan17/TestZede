@@ -184,11 +184,29 @@ def test_max_mutants_spinbox_value_is_passed_to_the_engine_factory(qtbot):
     assert calls == [7, 7, 1000]
 
 
-def test_default_factory_builds_a_real_engine_with_the_given_limit():
-    from testzede.gui.pages.mutation_page import default_service_factory
+def test_default_factory_is_the_service_layer_factory(qtbot):
+    from testzede.services.mutation_service import create_mutation_service
 
-    service = default_service_factory(12)
-    assert service._engine._max_mutants == 12
+    page = MutationPage(AppState(source=SOURCE, tests=list(TESTS)))
+    qtbot.addWidget(page)
+    assert page._service_factory is create_mutation_service
+
+
+def test_spinbox_value_reaches_the_default_service_factory(qtbot, monkeypatch):
+    from testzede.gui.pages import mutation_page
+
+    calls: list[int] = []
+
+    def fake_factory(max_mutants: int) -> MutationService:
+        calls.append(max_mutants)
+        return MutationService(FakeEngine())
+
+    monkeypatch.setattr(mutation_page, "create_mutation_service", fake_factory)
+    page = MutationPage(AppState(source=SOURCE, tests=list(TESTS)))  # varsayılan fabrika
+    qtbot.addWidget(page)
+    page.max_spin.setValue(33)
+    _run_and_wait(qtbot, page)
+    assert calls == [33]
 
 
 def test_engine_runs_off_gui_thread_and_completion_arrives_on_it(qtbot):

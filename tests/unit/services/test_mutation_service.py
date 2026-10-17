@@ -140,3 +140,30 @@ def test_run_detailed_converts_mutation_error():
         MutationService(FailingEngine()).run_detailed("x = 1", TESTS)
     assert info.value.message == "Testler orijinal kodda geçmiyor"
     assert isinstance(info.value.__cause__, MutationError)
+
+
+# --- create_mutation_service -------------------------------------------------------------------
+
+
+def test_factory_builds_service_with_real_engine_and_given_limit():
+    from testzede.mutation.engine import MutationEngine as CoreEngine
+    from testzede.services.mutation_service import create_mutation_service
+
+    service = create_mutation_service(12)
+    assert isinstance(service, MutationService)
+    assert isinstance(service._engine, CoreEngine)
+    assert service._engine._max_mutants == 12
+
+
+def test_factory_default_limit_is_100():
+    from testzede.services.mutation_service import create_mutation_service
+
+    assert create_mutation_service()._engine._max_mutants == 100
+
+
+def test_factory_service_converts_engine_errors_to_service_errors():
+    from testzede.services.mutation_service import create_mutation_service
+
+    # Test yok: taban koşusunda geçen test bulunamaz -> MutationError -> ServiceError
+    with pytest.raises(ServiceError, match="geçen hiçbir test yok"):
+        create_mutation_service().run_detailed("def f(a):\n    return a\n", [])

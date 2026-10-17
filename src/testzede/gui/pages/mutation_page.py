@@ -30,8 +30,7 @@ from testzede.gui.pages import mutation_logic as logic
 from testzede.gui.pages.base import BasePage
 from testzede.gui.state import AppState
 from testzede.gui.workers import Worker, run_in_thread
-from testzede.mutation.engine import MutationEngine
-from testzede.services.mutation_service import MutationService
+from testzede.services.mutation_service import MutationService, create_mutation_service
 
 if TYPE_CHECKING:
     from testzede.mutation.engine import MutationRun
@@ -46,11 +45,6 @@ _STALE_NOTE = "Not: Kaynak kod veya testler değişti, bu sonuç eski olabilir. 
 ServiceFactory = Callable[[int], MutationService]
 
 
-def default_service_factory(max_mutants: int) -> MutationService:
-    """Gerçek motorla (en fazla ``max_mutants`` mutant) bir ``MutationService`` kurar."""
-    return MutationService(MutationEngine(max_mutants=max_mutants))
-
-
 class MutationPage(BasePage):
     """Mutasyon analizini arka planda çalıştırır; hayatta kalan mutantları farklarıyla gösterir."""
 
@@ -63,7 +57,7 @@ class MutationPage(BasePage):
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(PAGE_TITLE, state, parent)
-        self._service_factory = service_factory or default_service_factory
+        self._service_factory = service_factory or create_mutation_service
         self._worker: Worker | None = None
         self._thread: QThread | None = None
         self._pending: tuple[str, list[TestCase]] | None = None  # çalışan işin girdisi
