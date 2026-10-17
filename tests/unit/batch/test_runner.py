@@ -3,12 +3,20 @@ from pathlib import Path
 import openpyxl
 import pytest
 
-from testzede.batch.runner import BatchConfig, run_batch, run_dataset, run_split, run_unit
+from testzede.batch.runner import (
+    BatchConfig,
+    mutation_stage,
+    run_batch,
+    run_dataset,
+    run_split,
+    run_unit,
+)
 from testzede.config import ConfigError, load_config
 from testzede.datasets.hashing import sha256_file
 from testzede.datasets.splits import build_splits, write_splits
-from testzede.domain.models import CodeUnit, MutationReport, Prediction
+from testzede.domain.models import CodeUnit, MutationReport, Prediction, RunStats, TestCase
 from testzede.execution.executor import SandboxExecutor
+from testzede.mutation.engine import MutationRun
 from testzede.rl.env import EnvConfig
 from testzede.rl.trainer import RLConfig
 
@@ -88,6 +96,35 @@ def test_failing_hook_keeps_earlier_results(executor):
     result = run_unit(_unit(), executor, BatchConfig(rl=FAST.rl, mutation=mutation), seed=1)
     assert result.error == "Mutasyon: motor çöktü"
     assert result.coverage is not None and result.mutation is None
+
+
+def test_mutation_stage_returns_report_of_detailed_run():
+    calls = []
+    report = MutationReport(total=4, killed=3, survived=1, timeout=0)
+
+    class FakeEngine:
+        def run_detailed(self, source, tests):
+            calls.append((source, tests))
+            return MutationRun(report=report, stats=RunStats(1, 1, 0.1), survivors=[])
+
+    tests = (TestCase("test_a", "def test_a():\n    assert sign(1) == 1", "rl"),)
+    assert mutation_stage(FakeEngine())(_unit(), tests) is report
+    assert calls == [(SIGN, list(tests))]
+
+
+def test_mutation_stage_counts_uncovered_mutants_as_survived():
+    source = "def f(a):\n    if a > 0:\n        return 1\n    return 2\n"
+    tests = [TestCase("test_one", "def test_one():\n    assert f(1) == 1", "rl")]
+    report = mutation_stage()(_unit(source=source, entry_point="f"), tests)
+    # 5 mutant: 3'ü öldü; ROR (satır 2) ve kapsanmayan satır 4'teki RETURN_NONE hayatta kaldı.
+    assert (report.total, report.killed, report.survived) == (5, 3, 2)
+
+
+def test_config_mutation_switch():
+    assert BatchConfig.from_mapping({}).mutation is None
+    assert BatchConfig.from_mapping({"batch": {"mutation": False}}).mutation is None
+    assert callable(BatchConfig.from_mapping({"batch": {"mutation": True}}).mutation)
+    assert callable(BatchConfig.from_mapping(load_config(Path("configs/default.yaml"))).mutation)
 
 
 def test_run_batch_reports_progress_and_stops(executor):
