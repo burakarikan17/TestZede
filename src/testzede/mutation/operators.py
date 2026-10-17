@@ -115,19 +115,20 @@ _SYMBOL: dict[type[ast.AST], str] = {
 
 
 class AOR(_SiteOperator):
-    """Aritmetik operatör değiştirme: ``+``↔``-``, ``*``↔``/``."""
+    """Aritmetik operatör değiştirme: ``+``↔``-``, ``*``↔``/`` (``+=``, ``*=`` dahil)."""
 
     name = "AOR"
 
     def _sites(self, tree: ast.Module) -> list[_Site]:
         sites = []
         for node in ast.walk(tree):
-            if isinstance(node, ast.BinOp) and type(node.op) in _AOR_SWAP:
+            if isinstance(node, ast.BinOp | ast.AugAssign) and type(node.op) in _AOR_SWAP:
+                suffix = "=" if isinstance(node, ast.AugAssign) else ""
 
-                def apply(node: ast.BinOp = node) -> str:
+                def apply(node: ast.BinOp | ast.AugAssign = node, suffix: str = suffix) -> str:
                     old = type(node.op)
                     node.op = _AOR_SWAP[old]()
-                    return f"{_SYMBOL[old]} -> {_SYMBOL[type(node.op)]}"
+                    return f"{_SYMBOL[old]}{suffix} -> {_SYMBOL[type(node.op)]}{suffix}"
 
                 sites.append(_Site(node, apply))
         return _ordered(sites)

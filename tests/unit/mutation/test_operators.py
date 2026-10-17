@@ -49,6 +49,36 @@ def test_aor_ignores_other_operators():
     assert AOR().generate("x = a // b % c ** d") == []
 
 
+@pytest.mark.parametrize(("old", "new"), [("+=", "-="), ("-=", "+="), ("*=", "/="), ("/=", "*=")])
+def test_aor_augmented_assignment(old, new):
+    mutants = AOR().generate(f"def f(x):\n    x {old} 2\n    return x")
+    assert _sources(mutants) == [f"def f(x):\n    x {new} 2\n    return x"]
+    assert (mutants[0].operator, mutants[0].line) == ("AOR", 2)
+    assert mutants[0].description == f"{old} -> {new}"
+
+
+def test_aor_augmented_examples_from_spec():
+    assert _sources(AOR().generate("x += 1")) == ["x -= 1"]
+    assert _sources(AOR().generate("x *= 2")) == ["x /= 2"]
+
+
+@pytest.mark.parametrize("op", ["//=", "%=", "**=", "&=", "|=", "<<="])
+def test_aor_ignores_other_augmented_assignments(op):
+    assert AOR().generate(f"x {op} 2") == []
+
+
+def test_aor_augmented_line_number():
+    mutants = AOR().generate("x = 0\ny = 1\nx += y\n")
+    assert [m.line for m in mutants] == [3]
+
+
+def test_aor_binop_and_augassign_on_same_line_are_separate_mutants():
+    mutants = AOR().generate("x += a + b")
+    assert sorted(_sources(mutants)) == ["x += a - b", "x -= a + b"]
+    assert {m.line for m in mutants} == {1}
+    assert {m.description for m in mutants} == {"+= -> -=", "+ -> -"}
+
+
 # --- ROR ---------------------------------------------------------------------------------------
 
 
