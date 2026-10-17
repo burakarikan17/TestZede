@@ -352,7 +352,7 @@ def test_errors_are_shown_in_red_without_crashing(qtbot, mode, message):
     assert _run_and_wait(qtbot, page) is False
     assert page.status_label.text() == message
     assert page.status_label.property("status") == "error"
-    assert "#ff5252" in page.status_label.styleSheet()
+    assert page.colors["error"].fg.name() in page.status_label.styleSheet()
     assert page.state.mutation_run is None
     assert page.run_button.isEnabled() and not page.cancel_button.isEnabled()
     assert page.max_spin.isEnabled()

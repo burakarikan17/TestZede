@@ -6,7 +6,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt, Signal, Slot
-from PySide6.QtGui import QColor, QTextCursor, QTextFormat
+from PySide6.QtGui import QTextCursor, QTextFormat
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
@@ -28,7 +28,12 @@ from testzede.domain.models import TestCase
 from testzede.gui.pages import mutation_logic as logic
 from testzede.gui.pages.base import BasePage
 from testzede.gui.state import AppState
-from testzede.gui.styles import apply_monospace, fix_table_header
+from testzede.gui.styles import (
+    apply_monospace,
+    fix_table_header,
+    set_status_style,
+    status_colors,
+)
 from testzede.gui.worker import TaskRunner, Worker
 from testzede.services.mutation_service import MutationService, create_mutation_service
 
@@ -38,8 +43,9 @@ if TYPE_CHECKING:
 PAGE_TITLE = "Mutasyon"
 DEFAULT_MAX_MUTANTS = 100
 _WAIT_AT_EXIT_MS = 30_000
-_STATUS_COLORS = {"ok": "#69f0ae", "error": "#ff5252", "warn": "#ffab40", "info": ""}
-_DIFF_COLORS = {"+": QColor(46, 125, 50, 110), "-": QColor(198, 40, 40, 130)}
+# Durum etiketi türü -> ``styles.status_colors`` anahtarı ("info" renksizdir).
+_STATUS_KINDS = {"ok": "ok", "error": "error", "warn": "warning"}
+_DIFF_KINDS = {"+": "added", "-": "removed"}
 # Koyu temada seçili satır: parlak tema vurgusu yerine koyu zemin + beyaz yazı (kontrast ~9:1).
 SELECTION_BG = "#0b4d44"
 SELECTION_FG = "#ffffff"
@@ -64,6 +70,7 @@ class MutationPage(BasePage):
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(PAGE_TITLE, state, parent)
+        self.colors = status_colors(self)  # tema çalışırken değişmez
         self._service_factory = service_factory or create_mutation_service
         self._tasks = TaskRunner(self)
         self._running = False
@@ -87,7 +94,7 @@ class MutationPage(BasePage):
         self.progress_bar.setValue(0)
         self.status_label = QLabel("")
         self.note_label = QLabel(_STALE_NOTE)
-        self.note_label.setStyleSheet(f"color: {_STATUS_COLORS['warn']};")
+        set_status_style(self.note_label, self.colors["warning"])
         self.note_label.hide()
         self.score_label = QLabel()
         self.killed_label = QLabel()
@@ -300,9 +307,9 @@ class MutationPage(BasePage):
 
     def _set_status(self, message: str, kind: str) -> None:
         """Durum mesajını renkli gösterir (ok/error/warn/info)."""
-        color = _STATUS_COLORS[kind]
+        key = _STATUS_KINDS.get(kind)
         self.status_label.setText(message)
-        self.status_label.setStyleSheet(f"color: {color};" if color else "")
+        set_status_style(self.status_label, self.colors[key] if message and key else None)
         self.status_label.setProperty("status", kind)
         if kind != "warn":
             self._showing_problem = False
@@ -360,13 +367,14 @@ class MutationPage(BasePage):
         selections = []
         document = self.diff_view.document()
         for number, text in enumerate(diff.splitlines()):
-            color = _DIFF_COLORS.get(text[:1])
+            kind = _DIFF_KINDS.get(text[:1])
             block = document.findBlockByNumber(number)
-            if color is None or not block.isValid():
+            if kind is None or not block.isValid():
                 continue
             selection = QTextEdit.ExtraSelection()
             selection.cursor = QTextCursor(block)
-            selection.format.setBackground(color)
+            selection.format.setBackground(self.colors[kind].bg)
+            selection.format.setForeground(self.colors[kind].fg)
             selection.format.setProperty(QTextFormat.Property.FullWidthSelection, True)
             selections.append(selection)
         self.diff_view.setExtraSelections(selections)

@@ -48,7 +48,7 @@ def test_valid_tests_fill_app_state_and_show_green_summary(page):
     assert all(t.origin == "user" for t in page.state.tests)
     assert page.tests_status_label.text() == "2 test bulundu: test_a, test_b"
     assert page.tests_status_label.property("status") == "ok"
-    assert "#69f0ae" in page.tests_status_label.styleSheet()
+    assert page.colors["ok"].fg.name() in page.tests_status_label.styleSheet()
 
 
 def test_validate_tests_button_click(page, qtbot):
@@ -67,7 +67,7 @@ def test_test_syntax_error_keeps_previous_tests_and_shows_line(page):
     text = page.tests_status_label.text()
     assert text.startswith("Satır 2") and "Önceki geçerli testler korunuyor" in text
     assert page.tests_status_label.property("status") == "error"
-    assert "#ff5252" in page.tests_status_label.styleSheet()
+    assert page.colors["error"].fg.name() in page.tests_status_label.styleSheet()
 
 
 def test_test_error_on_fresh_page_leaves_tests_empty(page):

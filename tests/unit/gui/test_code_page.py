@@ -126,7 +126,7 @@ def test_valid_code_updates_state_and_lists_functions(page):
     assert page.state.source == VALID
     assert page.status_label.property("status") == "ok"
     assert "add, sub" in page.status_label.text()
-    assert "#69f0ae" in page.status_label.styleSheet()
+    assert page.colors["ok"].fg.name() in page.status_label.styleSheet()
 
 
 def test_syntax_error_does_not_update_state_and_shows_line(page):
@@ -135,7 +135,7 @@ def test_syntax_error_does_not_update_state_and_shows_line(page):
     assert page.state.source == ""
     assert page.status_label.property("status") == "error"
     assert page.status_label.text().startswith("Satır ")
-    assert "#ff5252" in page.status_label.styleSheet()
+    assert page.colors["error"].fg.name() in page.status_label.styleSheet()
     assert "Önceki geçerli kod" not in page.status_label.text()  # korunacak bir şey yok
 
 

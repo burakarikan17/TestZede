@@ -8,7 +8,7 @@ from result_builders import make_result
 
 from testzede.domain.models import RunStats, TestCase
 from testzede.gui.main_window import MainWindow
-from testzede.gui.pages.coverage_page import LINE_COLORS, OUTCOME_COLORS, CoveragePage
+from testzede.gui.pages.coverage_page import CoveragePage
 from testzede.gui.state import AppState
 from testzede.services.coverage_service import CoverageService
 from testzede.services.errors import ServiceError
@@ -166,10 +166,10 @@ def test_successful_run_fills_state_summary_tables_and_source(qtbot):
     ]
     colors = [page.test_table.item(r, 1).foreground().color().name() for r in range(4)]
     assert colors == [
-        OUTCOME_COLORS["passed"],
-        OUTCOME_COLORS["failed"],
-        OUTCOME_COLORS["timeout"],
-        OUTCOME_COLORS["error"],
+        page.colors["passed"].fg.name(),
+        page.colors["failed"].fg.name(),
+        page.colors["timeout"].fg.name(),
+        page.colors["error"].fg.name(),
     ]
     raw = [page.test_table.item(r, 1).data(Qt.ItemDataRole.UserRole) for r in range(4)]
     assert raw == ["passed", "failed", "timeout", "error"]
@@ -184,7 +184,7 @@ def test_successful_run_fills_state_summary_tables_and_source(qtbot):
 def test_source_lines_are_colored_by_status(qtbot):
     page = _page(qtbot, FakeService())
     _run_and_wait(qtbot, page)
-    rgb = {k: v.getRgb() for k, v in LINE_COLORS.items()}
+    rgb = {k: page.colors[k].bg.getRgb() for k in ("covered", "partial", "missed")}
     colors = _line_colors(page)
     assert colors[2] == rgb["partial"]
     assert colors[4] == rgb["missed"]
@@ -239,7 +239,7 @@ def test_service_error_is_shown_in_red_without_crashing(qtbot):
     assert _run_and_wait(qtbot, page) is False
     assert page.status_label.text() == "Kaynak kod geçerli değil: x"
     assert page.status_label.property("status") == "error"
-    assert "#ff5252" in page.status_label.styleSheet()
+    assert page.colors["error"].fg.name() in page.status_label.styleSheet()
     assert page.state.execution_result is None
     assert page.run_button.isEnabled()
     assert page.function_table.rowCount() == 0
@@ -367,7 +367,7 @@ def test_end_to_end_with_real_coverage_service(qtbot):
     assert page.branches_label.text() == "Dal: 50.0% (1/2)"
     assert page.compilation_label.text() == "Derleme: 100.0% (1/1)"
     assert page.state.execution_result is not None
-    rgb = {k: v.getRgb() for k, v in LINE_COLORS.items()}
+    rgb = {k: page.colors[k].bg.getRgb() for k in ("covered", "partial", "missed")}
     assert _line_colors(page) == {
         1: rgb["covered"],
         2: rgb["partial"],  # if: (2,4) dalı hiç çalışmadı

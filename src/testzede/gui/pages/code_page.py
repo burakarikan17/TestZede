@@ -21,13 +21,11 @@ from PySide6.QtWidgets import (
 
 from testzede.gui.pages.base import BasePage
 from testzede.gui.state import AppState
-from testzede.gui.styles import apply_monospace
+from testzede.gui.styles import apply_monospace, set_status_style, status_colors
 from testzede.services.test_loader import load_tests
 
 PAGE_TITLE = "Kod Yükle"
 DEBOUNCE_MS = 400
-_ERROR_COLOR = "#ff5252"
-_OK_COLOR = "#69f0ae"
 
 
 @dataclass(frozen=True)
@@ -109,13 +107,6 @@ def _make_tab(
     return tab
 
 
-def _set_status(label: QLabel, message: str, ok: bool) -> None:
-    """Durum etiketini yeşil (geçerli) ya da kırmızı (hata) gösterir."""
-    label.setText(message)
-    label.setStyleSheet(f"color: {_OK_COLOR if ok else _ERROR_COLOR};")
-    label.setProperty("status", "ok" if ok else "error")
-
-
 def _debounce(parent: QWidget, callback: Callable[[], object]) -> QTimer:
     """Tek atımlık, ``DEBOUNCE_MS`` gecikmeli zamanlayıcı döndürür."""
     timer = QTimer(parent)
@@ -130,6 +121,7 @@ class CodePage(BasePage):
 
     def __init__(self, state: AppState, parent: QWidget | None = None) -> None:
         super().__init__(PAGE_TITLE, state, parent)
+        self.colors = status_colors(self)
         self._committed = state.source  # en son yazdığımız/gördüğümüz AppState.source
         self._committed_tests = state.tests  # en son yazdığımız/gördüğümüz AppState.tests
         self._pending_module: str | None = None  # son açılan kaynak dosyanın adı
@@ -192,7 +184,7 @@ class CodePage(BasePage):
                 self._pending_module = None
         elif self.state.source:
             message += " (Önceki geçerli kod korunuyor.)"
-        _set_status(self.status_label, message, result.ok)
+        self._set_status(self.status_label, message, result.ok)
         if result.ok and self.tests_editor.toPlainText().strip():
             self.validate_tests()
         return result
@@ -205,7 +197,7 @@ class CodePage(BasePage):
         try:
             text = read_source_file(path)
         except ValueError as exc:
-            _set_status(self.status_label, str(exc), False)
+            self._set_status(self.status_label, str(exc), False)
             return False
         self._pending_module = Path(path).stem
         self.editor.setPlainText(text)
@@ -230,12 +222,12 @@ class CodePage(BasePage):
             message = str(exc)
             if self.state.tests:
                 message += " (Önceki geçerli testler korunuyor.)"
-            _set_status(self.tests_status_label, message, False)
+            self._set_status(self.tests_status_label, message, False)
             return False
         self.state.tests = cases
         self._committed_tests = cases
         names = ", ".join(case.name for case in cases)
-        _set_status(self.tests_status_label, f"{len(cases)} test bulundu: {names}", True)
+        self._set_status(self.tests_status_label, f"{len(cases)} test bulundu: {names}", True)
         return True
 
     def load_tests_file(self, path: Path) -> bool:
@@ -243,7 +235,7 @@ class CodePage(BasePage):
         try:
             text = read_source_file(path)
         except ValueError as exc:
-            _set_status(self.tests_status_label, str(exc), False)
+            self._set_status(self.tests_status_label, str(exc), False)
             return False
         self.tests_editor.setPlainText(text)
         self.validate_tests()
@@ -254,6 +246,13 @@ class CodePage(BasePage):
         name, _ = QFileDialog.getOpenFileName(self, "Test dosyası seç", "", "Python (*.py)")
         if name:
             self.load_tests_file(Path(name))
+
+    def _set_status(self, label: QLabel, message: str, ok: bool) -> None:
+        """Durum etiketini geçerli (ok) ya da hata rengiyle gösterir."""
+        kind = "ok" if ok else "error"
+        label.setText(message)
+        set_status_style(label, self.colors[kind])
+        label.setProperty("status", kind)
 
     # --- sayfa yaşam döngüsü -------------------------------------------------------------------
 
@@ -266,6 +265,8 @@ class CodePage(BasePage):
                 self.tests_editor.clear()
                 self.tests_editor.blockSignals(False)
                 self.tests_status_label.clear()
+                set_status_style(self.tests_status_label, None)
+                self.tests_status_label.setProperty("status", None)
         if self.state.source == self._committed:
             return  # dışarıdan değişiklik yok: yazılmamış taslak korunur
         self._committed = self.state.source

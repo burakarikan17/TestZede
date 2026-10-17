@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt, Signal, Slot
-from PySide6.QtGui import QBrush, QColor, QTextCursor, QTextFormat
+from PySide6.QtGui import QBrush, QTextCursor, QTextFormat
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
@@ -25,7 +25,13 @@ from testzede.domain.models import TestCase
 from testzede.gui.pages import coverage_logic as logic
 from testzede.gui.pages.base import BasePage
 from testzede.gui.state import AppState
-from testzede.gui.styles import apply_monospace, fix_table_header
+from testzede.gui.styles import (
+    StatusColor,
+    apply_monospace,
+    fix_table_header,
+    set_status_style,
+    status_colors,
+)
 from testzede.gui.worker import TaskRunner, Worker
 from testzede.services.coverage_service import CoverageService
 
@@ -35,25 +41,14 @@ if TYPE_CHECKING:
 PAGE_TITLE = "Coverage"
 _WAIT_AT_EXIT_MS = 15_000
 
-# Koyu temada okunur, yarı saydam arka planlar.
-LINE_COLORS: dict[str, QColor] = {
-    "covered": QColor(46, 125, 50, 110),
-    "partial": QColor(249, 168, 37, 120),
-    "missed": QColor(198, 40, 40, 130),
-}
 OUTCOME_LABELS = {
     "passed": "Geçti",
     "failed": "Başarısız",
     "error": "Hata",
     "timeout": "Zaman aşımı",
 }
-OUTCOME_COLORS = {
-    "passed": "#69f0ae",
-    "failed": "#ff5252",
-    "error": "#ff5252",
-    "timeout": "#ffab40",
-}
-_STATUS_COLORS = {"ok": "#69f0ae", "error": "#ff5252", "warn": "#ffab40", "info": ""}
+# Durum etiketi türü -> ``styles.status_colors`` anahtarı ("info" renksizdir).
+_STATUS_KINDS = {"ok": "ok", "error": "error", "warn": "warning"}
 FUNCTION_COLUMN_TIP = (
     "Satır ve dal kapsamasının birleşik yüzdesi (coverage.py). "
     "Üstteki 'Satır' yalnızca satır kapsamasıdır."
@@ -72,11 +67,15 @@ def _readonly_table(headers: list[str]) -> QTableWidget:
     return table
 
 
-def _cell(text: str, color: str | None = None, right: bool = False) -> QTableWidgetItem:
-    """Salt okunur tablo hücresi; isteğe bağlı yazı rengi ve sağa hizalama."""
+def _cell(text: str, color: StatusColor | None = None, right: bool = False) -> QTableWidgetItem:
+    """Salt okunur tablo hücresi; isteğe bağlı durum yazı rengi ve sağa hizalama.
+
+    Zemin verilmez: qt-material stil sayfası hücre zeminini (``BackgroundRole``) yok sayar.
+    Durum yazı renkleri temanın tablo zeminine karşı da >= 4.5:1 kontrastlıdır.
+    """
     item = QTableWidgetItem(text)
-    if color:
-        item.setForeground(QBrush(QColor(color)))
+    if color is not None:
+        item.setForeground(QBrush(color.fg))
     if right:
         item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
     return item
@@ -94,6 +93,7 @@ class CoveragePage(BasePage):
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(PAGE_TITLE, state, parent)
+        self.colors = status_colors(self)  # tema çalışırken değişmez
         self._service = service if service is not None else CoverageService()
         self._tasks = TaskRunner(self)
         self._running = False
@@ -110,7 +110,7 @@ class CoveragePage(BasePage):
         self.compilation_label = QLabel()
         self.time_label = QLabel()
         self.note_label = QLabel(_STALE_NOTE)
-        self.note_label.setStyleSheet(f"color: {_STATUS_COLORS['warn']};")
+        set_status_style(self.note_label, self.colors["warning"])
         self.note_label.hide()
 
         self.source_view = QPlainTextEdit()
@@ -245,9 +245,9 @@ class CoveragePage(BasePage):
 
     def _set_status(self, message: str, kind: str) -> None:
         """Durum mesajını renkli gösterir (ok/error/warn/info)."""
-        color = _STATUS_COLORS[kind]
+        key = _STATUS_KINDS.get(kind)
         self.status_label.setText(message)
-        self.status_label.setStyleSheet(f"color: {color};" if color else "")
+        set_status_style(self.status_label, self.colors[key] if message and key else None)
         self.status_label.setProperty("status", kind)
         if kind != "warn":
             self._showing_problem = False
@@ -288,7 +288,7 @@ class CoveragePage(BasePage):
         self.test_table.setRowCount(len(outcomes))
         for i, (name, outcome) in enumerate(outcomes):
             label = OUTCOME_LABELS.get(outcome, outcome)
-            cell = _cell(label, OUTCOME_COLORS.get(outcome))
+            cell = _cell(label, self.colors.get(outcome))
             cell.setData(Qt.ItemDataRole.UserRole, outcome)
             self.test_table.setItem(i, 0, _cell(name))
             self.test_table.setItem(i, 1, cell)
@@ -308,7 +308,8 @@ class CoveragePage(BasePage):
                 continue
             selection = QTextEdit.ExtraSelection()
             selection.cursor = QTextCursor(block)
-            selection.format.setBackground(LINE_COLORS[status])
+            selection.format.setBackground(self.colors[status].bg)
+            selection.format.setForeground(self.colors[status].fg)
             selection.format.setProperty(QTextFormat.Property.FullWidthSelection, True)
             selections.append(selection)
         self.source_view.setExtraSelections(selections)
