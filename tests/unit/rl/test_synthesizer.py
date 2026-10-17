@@ -75,3 +75,14 @@ def test_format_call_round_trips_special_values():
 )
 def test_output_class(call, expected):
     assert output_class(call) == expected
+
+
+def test_generator_call_is_consumed_like_the_oracle():
+    test = synthesize("g", (3,), FakeCall("ok", "[0, 1, 2]"), step=1, generator=True)
+    assert test.code.startswith("from itertools import islice\n")
+    assert _body(test) == "    assert list(islice(g(3), 50)) == [0, 1, 2]\n"
+
+
+def test_generator_exception_is_raised_while_consuming():
+    test = synthesize("g", (-1,), FakeCall("raised", exc_type="ValueError"), step=1, generator=True)
+    assert "with pytest.raises(ValueError):\n        list(islice(g(-1), 50))" in test.code

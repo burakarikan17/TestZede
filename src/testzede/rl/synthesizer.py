@@ -12,7 +12,7 @@ import builtins
 import math
 
 from testzede.domain.models import TestCase
-from testzede.rl.executor import TARGET_MODULE, CallOutcome
+from testzede.rl.executor import GENERATOR_LIMIT, TARGET_MODULE, CallOutcome
 
 
 def make_test_name(step: int) -> str:
@@ -23,6 +23,11 @@ def make_test_name(step: int) -> str:
 def format_call(entry_point: str, args: tuple) -> str:
     """``f(1, [2])`` biçiminde çağrı ifadesi."""
     return f"{entry_point}({', '.join(repr(a) for a in args)})"
+
+
+def consume_call(call: str) -> str:
+    """Generator çağrısını oracle ile aynı biçimde tüketen ifade."""
+    return f"list(islice({call}, {GENERATOR_LIMIT}))"
 
 
 def parse_value(value_repr: str | None) -> tuple[bool, object]:
@@ -59,9 +64,21 @@ def _assertion(call: str, value_repr: str | None) -> str:
     return f"    assert {call} == {value_repr}"
 
 
-def synthesize(entry_point: str, args: tuple, outcome: CallOutcome, step: int) -> TestCase | None:
-    """Oracle sonucundan test üretir; girdi geçersizse (timeout/error) ``None`` döner."""
+def synthesize(
+    entry_point: str,
+    args: tuple,
+    outcome: CallOutcome,
+    step: int,
+    *,
+    generator: bool = False,
+) -> TestCase | None:
+    """Oracle sonucundan test üretir; girdi geçersizse (timeout/error) ``None`` döner.
+
+    ``generator`` ise çağrı, oracle'daki gibi ilk ``GENERATOR_LIMIT`` öğe tüketilerek yazılır.
+    """
     call = format_call(entry_point, args)
+    if generator:
+        call = consume_call(call)
     if outcome.status == "ok":
         body = _assertion(call, outcome.value_repr)
     elif outcome.status == "raised":
@@ -69,8 +86,10 @@ def synthesize(entry_point: str, args: tuple, outcome: CallOutcome, step: int) -
     else:
         return None
     name = make_test_name(step)
+    imports = "from itertools import islice\n\n" if generator else ""
     code = (
-        f"import pytest\n\nfrom {TARGET_MODULE} import {entry_point}\n\n\ndef {name}():\n{body}\n"
+        f"{imports}import pytest\n\nfrom {TARGET_MODULE} import {entry_point}\n\n\n"
+        f"def {name}():\n{body}\n"
     )
     return TestCase(name=name, code=code, origin="rl")
 
