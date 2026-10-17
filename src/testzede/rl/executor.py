@@ -16,6 +16,9 @@ from testzede.domain.models import CodeUnit, RunStats, TestCase
 TARGET_MODULE = "target"
 """Üretilen testlerin kaynağı import ettiği modül adı (``execution.sandbox.TARGET_MODULE``)."""
 
+GENERATOR_LIMIT = 50
+"""Oracle'ın generator fonksiyonlarından topladığı öğe sayısı (``execution.sandbox``)."""
+
 
 class CallOutcome(Protocol):
     """Girdinin referans çözümde tek seferlik çalıştırılmasının sonucu (oracle)."""

@@ -93,11 +93,41 @@ def extract_params(unit: CodeUnit) -> tuple[ParamSpec, ...]:
     return tuple(params)
 
 
+# ``>>> list(f(1))`` gibi sonucu tüketen sarmalayıcılar (generator örneklerinde yaygın).
+_SEED_WRAPPERS = frozenset({"list", "tuple", "set", "sorted", "next"})
+
+
+def _entry_function(tree: ast.Module, entry_point: str | None) -> ast.FunctionDef | None:
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef) and node.name == entry_point:
+            return node
+    return None
+
+
+def is_generator(unit: CodeUnit) -> bool:
+    """Giriş fonksiyonu generator mı (gövdesinde, iç fonksiyonlar hariç ``yield`` var mı)."""
+    try:
+        func = _entry_function(ast.parse(unit.source), unit.entry_point)
+    except (SyntaxError, ValueError):
+        return False
+    if func is None:
+        return False
+    stack: list[ast.AST] = list(func.body)
+    while stack:
+        node = stack.pop()
+        if isinstance(node, ast.Yield | ast.YieldFrom):
+            return True
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda | ast.ClassDef):
+            continue  # iç tanımın yield'i dış fonksiyonu generator yapmaz
+        stack.extend(ast.iter_child_nodes(node))
+    return False
+
+
 def parse_seed_inputs(unit: CodeUnit) -> tuple[tuple, ...]:
     """``>>> f(1, [2])`` biçimindeki docstring örneklerinden argüman demetleri çıkarır.
 
-    Literal olmayan argüman içeren ya da başka bir fonksiyonu çağıran örnekler
-    atlanır.
+    ``list(f(1))`` gibi tek argümanlı tüketici sarmalayıcılar açılır. Literal olmayan
+    argüman içeren ya da başka bir fonksiyonu çağıran örnekler atlanır.
     """
     inputs = []
     for example in unit.seed_examples:
@@ -106,6 +136,16 @@ def parse_seed_inputs(unit: CodeUnit) -> tuple[tuple, ...]:
             node = ast.parse(text, mode="eval").body
         except SyntaxError:
             continue
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id in _SEED_WRAPPERS
+            and node.func.id != unit.entry_point
+            and len(node.args) == 1
+            and not node.keywords
+            and isinstance(node.args[0], ast.Call)
+        ):
+            node = node.args[0]
         if not (
             isinstance(node, ast.Call)
             and isinstance(node.func, ast.Name)
