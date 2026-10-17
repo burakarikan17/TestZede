@@ -91,7 +91,8 @@ Raporlar `reports/<tarih>/<veri_seti>/` altına yazılır (`results`, `summary`,
 CSV'leri, `report.xlsx`, `report.html`). Her rapor kullanılan split dosyasının SHA-256
 özetini ve yapılandırma dosyasının adını taşır. Yapılandırma varsayılan olarak
 `configs/frozen.yaml`'dan, o yoksa `configs/default.yaml`'dan okunur (`--config` ile
-değiştirilebilir). Bir birimde hata olursa çalıştırma durmaz; hata `error` sütununa yazılır.
+değiştirilebilir). `frozen.yaml` development split'inde yapılan ayar taramasının sonucudur
+(tablo dosyanın başında); ana deney ve dış test setlerinde değiştirilmez. Bir birimde hata olursa çalıştırma durmaz; hata `error` sütununa yazılır.
 
 ## Proje yapısı
 
