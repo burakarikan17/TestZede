@@ -40,6 +40,13 @@ DEFAULT_MAX_MUTANTS = 100
 _WAIT_AT_EXIT_MS = 30_000
 _STATUS_COLORS = {"ok": "#69f0ae", "error": "#ff5252", "warn": "#ffab40", "info": ""}
 _DIFF_COLORS = {"+": QColor(46, 125, 50, 110), "-": QColor(198, 40, 40, 130)}
+# Koyu temada seçili satır: parlak tema vurgusu yerine koyu zemin + beyaz yazı (kontrast ~9:1).
+SELECTION_BG = "#0b4d44"
+SELECTION_FG = "#ffffff"
+_TABLE_QSS = (
+    "QTableWidget::item:selected, QTableWidget::item:selected:!active "
+    f"{{ background-color: {SELECTION_BG}; color: {SELECTION_FG}; }}"
+)
 _STALE_NOTE = "Not: Kaynak kod veya testler değişti, bu sonuç eski olabilir. Yeniden çalıştırın."
 
 ServiceFactory = Callable[[int], MutationService]
@@ -96,6 +103,7 @@ class MutationPage(BasePage):
         self.survivors_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.survivors_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.survivors_table.verticalHeader().setVisible(False)
+        self.survivors_table.setStyleSheet(_TABLE_QSS)  # yalnızca bu tablo
         header = self.survivors_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
