@@ -12,7 +12,9 @@ from PySide6.QtWidgets import QApplication
 
 from testzede.gui.error_handler import handle_exception, install_global_handler
 from testzede.gui.main_window import MainWindow
+from testzede.gui.pages import coverage_page
 from testzede.gui.pages.code_page import PAGE_TITLE, CodePage
+from testzede.gui.pages.coverage_page import CoveragePage
 from testzede.logging_setup import Logger
 
 THEME = "dark_teal.xml"
@@ -67,6 +69,7 @@ def create_main_window() -> MainWindow:
     """Ana pencereyi kurar ve hazır sayfaları kaydeder."""
     window = MainWindow()
     window.register_page(PAGE_TITLE, CodePage(window.state))
+    window.register_page(coverage_page.PAGE_TITLE, CoveragePage(window.state))
     return window
 
 
