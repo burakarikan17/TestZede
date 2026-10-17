@@ -44,3 +44,46 @@ def test_huge_int_repr_error_is_ok_without_value():
 def test_oversized_repr_is_dropped_not_truncated():
     r = call_function(_unit("def f():\n    return 'a' * 20000"), "()")
     assert (r.status, r.value_repr) == ("ok", None)
+
+
+def test_entry_point_none_is_error():
+    r = call_function(_unit("def f(): return 1", entry=None), "()")
+    assert (r.status, r.value_repr, r.exc_type) == ("error", None, None)
+
+
+def test_valid_literal_that_is_not_a_tuple_is_error():
+    assert call_function(_unit("def f(a): return a"), "5").status == "error"
+    assert call_function(_unit("def f(a): return a"), "[1, 2]").status == "error"
+
+
+def test_function_raising_custom_exception_reports_type():
+    src = "class MyErr(Exception):\n    pass\ndef f():\n    raise MyErr('x')"
+    r = call_function(_unit(src), "()")
+    assert (r.status, r.exc_type) == ("raised", "MyErr")
+
+
+def test_sys_exit_in_target_is_raised_not_crash():
+    r = call_function(_unit("import sys\ndef f():\n    sys.exit(2)"), "()")
+    assert (r.status, r.exc_type) == ("raised", "SystemExit")
+
+
+def test_infinite_loop_times_out_quickly():
+    r = call_function(_unit("def f():\n    while True:\n        pass"), "()", timeout=0.5)
+    assert r.status == "timeout"
+    assert r.duration_s < 5
+
+
+def test_oversized_output_gives_none_value_repr():
+    r = call_function(_unit("def f():\n    return [0] * 100000"), "()")
+    assert (r.status, r.value_repr) == ("ok", None)
+
+
+def test_value_repr_at_limit_is_kept():
+    r = call_function(_unit("def f():\n    return 'a' * 100"), "()")
+    assert r.status == "ok"
+    assert r.value_repr == repr("a" * 100)
+
+
+def test_module_level_exception_in_target_is_error():
+    r = call_function(_unit("raise RuntimeError('x')\ndef f(): pass"), "()")
+    assert r.status == "error"
