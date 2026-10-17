@@ -14,6 +14,7 @@ from testzede.gui.pages import mutation_logic as logic
 from testzede.gui.pages.coverage_page import CoveragePage
 from testzede.gui.pages.mutation_page import SELECTION_BG, SELECTION_FG, MutationPage
 from testzede.gui.state import AppState
+from testzede.gui.styles import HEADER_QSS, MONO_QSS
 from testzede.mutation.engine import MutationRun
 from testzede.mutation.operators import generate_all
 
@@ -124,10 +125,10 @@ def test_selection_style_applies_only_to_the_survivor_table(qtbot):
     assert "item:selected" in qss and SELECTION_BG in qss and SELECTION_FG in qss
     assert ":!active" in qss  # odak kaybolunca da okunur kalır
     assert page.styleSheet() == ""
-    assert page.diff_view.styleSheet() == ""
+    assert page.diff_view.styleSheet() == MONO_QSS  # yalnızca monospace düzeltmesi, seçim stili yok
     coverage = CoveragePage(AppState())
     qtbot.addWidget(coverage)
-    assert coverage.function_table.styleSheet() == ""
+    assert coverage.function_table.styleSheet() == HEADER_QSS  # yalnızca başlık düzeltmesi
 
 
 def test_selected_row_is_painted_dark_with_the_real_theme(qtbot, qapp):

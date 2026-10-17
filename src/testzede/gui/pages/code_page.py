@@ -8,7 +8,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from PySide6.QtCore import QTimer
-from PySide6.QtGui import QFont, QFontDatabase
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -22,6 +21,7 @@ from PySide6.QtWidgets import (
 
 from testzede.gui.pages.base import BasePage
 from testzede.gui.state import AppState
+from testzede.gui.styles import apply_monospace
 from testzede.services.test_loader import load_tests
 
 PAGE_TITLE = "Kod Yükle"
@@ -84,10 +84,7 @@ def check_source(text: str) -> SourceCheck:
 def _make_editor(placeholder: str) -> QPlainTextEdit:
     """Monospace kod editörü oluşturur."""
     editor = QPlainTextEdit()
-    font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
-    font.setStyleHint(QFont.StyleHint.Monospace)
-    font.setFixedPitch(True)
-    editor.setFont(font)
+    apply_monospace(editor)
     editor.setPlaceholderText(placeholder)
     return editor
 

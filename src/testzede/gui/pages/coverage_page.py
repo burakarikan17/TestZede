@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt, QThread, Signal, Slot
-from PySide6.QtGui import QBrush, QColor, QFont, QFontDatabase, QTextCursor, QTextFormat
+from PySide6.QtGui import QBrush, QColor, QTextCursor, QTextFormat
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -26,6 +26,7 @@ from testzede.domain.models import TestCase
 from testzede.gui.pages import coverage_logic as logic
 from testzede.gui.pages.base import BasePage
 from testzede.gui.state import AppState
+from testzede.gui.styles import apply_monospace, fix_table_header
 from testzede.gui.workers import Worker, run_in_thread
 from testzede.services.coverage_service import CoverageService
 
@@ -116,16 +117,15 @@ class CoveragePage(BasePage):
         self.source_view = QPlainTextEdit()
         self.source_view.setReadOnly(True)
         self.source_view.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
-        font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
-        font.setStyleHint(QFont.StyleHint.Monospace)
-        font.setFixedPitch(True)
-        self.source_view.setFont(font)
+        apply_monospace(self.source_view)
         self.function_table = _readonly_table(["Fonksiyon", "Kapsama %"])
         header = self.function_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         self.function_table.horizontalHeaderItem(1).setToolTip(FUNCTION_COLUMN_TIP)
         self.test_table = _readonly_table(["Test", "Sonuç"])
+        fix_table_header(self.function_table)
+        fix_table_header(self.test_table)
 
         top = QHBoxLayout()
         top.addWidget(self.run_button)

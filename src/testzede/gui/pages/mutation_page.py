@@ -6,7 +6,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt, QThread, Signal, Slot
-from PySide6.QtGui import QColor, QFont, QFontDatabase, QTextCursor, QTextFormat
+from PySide6.QtGui import QColor, QTextCursor, QTextFormat
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -29,6 +29,7 @@ from testzede.domain.models import TestCase
 from testzede.gui.pages import mutation_logic as logic
 from testzede.gui.pages.base import BasePage
 from testzede.gui.state import AppState
+from testzede.gui.styles import apply_monospace, fix_table_header
 from testzede.gui.workers import Worker, run_in_thread
 from testzede.services.mutation_service import MutationService, create_mutation_service
 
@@ -104,6 +105,7 @@ class MutationPage(BasePage):
         self.survivors_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.survivors_table.verticalHeader().setVisible(False)
         self.survivors_table.setStyleSheet(_TABLE_QSS)  # yalnızca bu tablo
+        fix_table_header(self.survivors_table)
         header = self.survivors_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
@@ -112,10 +114,7 @@ class MutationPage(BasePage):
         self.diff_view = QPlainTextEdit()
         self.diff_view.setReadOnly(True)
         self.diff_view.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
-        font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
-        font.setStyleHint(QFont.StyleHint.Monospace)
-        font.setFixedPitch(True)
-        self.diff_view.setFont(font)
+        apply_monospace(self.diff_view)
         self.diff_view.setPlaceholderText("Farkı görmek için bir hayatta kalan mutant seçin")
 
         controls = QHBoxLayout()
