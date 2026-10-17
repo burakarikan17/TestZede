@@ -80,3 +80,58 @@ def test_generate_and_saved_module_runs_under_pytest(tmp_path):
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert f"{len(result.tests)} passed" in proc.stdout
+
+
+USER_TESTS = """from hesap import clamp
+
+
+def test_inside():
+    assert clamp(2, 0, 3) == 2
+"""
+
+
+def test_user_test_case_rewrites_module_imports():
+    code = "import hesap\nimport hesap as h\nfrom hesap import clamp\nimport math\n\n\ndef test_x():\n    pass\n"
+    test = rl_service.user_test_case(code, "hesap")
+    assert test.origin == "user" and test.name == "user_tests"
+    assert "import target as hesap" in test.code
+    assert "import target as h" in test.code
+    assert "from target import clamp" in test.code
+    assert "import math" in test.code
+
+
+@pytest.mark.parametrize(
+    ("code", "message"),
+    [("def test_x(:\n", "satır 1"), ("def helper():\n    pass\n", "test fonksiyonu yok")],
+)
+def test_user_test_case_errors(code, message):
+    with pytest.raises(ServiceError, match=message):
+        rl_service.user_test_case(code, "hesap")
+
+
+def test_guess_module_name():
+    assert rl_service.guess_module_name(USER_TESTS, SOURCE) == "hesap"
+    assert rl_service.guess_module_name("import pytest\n", SOURCE) is None
+    assert rl_service.guess_module_name("def test(:", SOURCE) is None
+
+
+def test_generate_augments_user_tests():
+    result = rl_service.generate(SOURCE, "clamp", config=FAST, seed=3, user_tests=USER_TESTS)
+    assert result.user_outcome == "passed"
+    assert result.baseline is not None
+    assert result.coverage.covered_lines > result.baseline.covered_lines
+    assert result.tests  # RL eksik dalları (x < low, x > high) için test ekledi
+
+
+def test_generate_with_complete_user_tests_adds_nothing():
+    complete = USER_TESTS + (
+        "\n\ndef test_edges():\n    assert clamp(-1, 0, 3) == 0\n    assert clamp(9, 0, 3) == 3\n"
+    )
+    result = rl_service.generate(SOURCE, "clamp", config=FAST, seed=3, user_tests=complete)
+    assert result.tests == []
+    assert result.coverage.covered_branches == result.coverage.total_branches
+
+
+def test_saved_module_uses_user_module_name():
+    result = rl_service.generate(SOURCE, "clamp", config=FAST, seed=3)
+    assert "from hesap import clamp" in rl_service.tests_module(result, "hesap")

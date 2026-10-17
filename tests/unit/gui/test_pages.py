@@ -52,8 +52,8 @@ def test_rl_page_lists_functions(qtbot):
 def test_rl_page_generates_in_background(qtbot, monkeypatch):
     calls = []
 
-    def fake_generate(source, entry_point):
-        calls.append(entry_point)
+    def fake_generate(source, entry_point, **kwargs):
+        calls.append((entry_point, kwargs))
         return _generation()
 
     monkeypatch.setattr(rl_page.rl_service, "generate", fake_generate)
@@ -62,7 +62,7 @@ def test_rl_page_generates_in_background(qtbot, monkeypatch):
     page.set_source(SOURCE)
     page.generate_button.click()
     qtbot.waitUntil(lambda: page.test_list.count() == 1, timeout=5000)
-    assert calls == ["f"]
+    assert calls == [("f", {"user_tests": None, "module_name": None})]
     assert "assert f(1) == 1" in page.test_view.toPlainText()
     assert page.tile_tests.value.text() == "1"
     assert page.tile_branches.value.text() == "1 / 2"
@@ -72,7 +72,7 @@ def test_rl_page_generates_in_background(qtbot, monkeypatch):
 
 
 def test_rl_page_shows_service_error(qtbot, monkeypatch, warnings):
-    def failing(source, entry_point):
+    def failing(source, entry_point, **kwargs):
         raise ServiceError("Fonksiyon bulunamadı")
 
     monkeypatch.setattr(rl_page.rl_service, "generate", failing)
@@ -162,3 +162,26 @@ def test_main_window_hosts_pages(qtbot, monkeypatch):
 
 def test_batch_service_reexports_types():
     assert batch_service.UnitResult is UnitResult
+
+
+def test_rl_page_passes_user_tests_and_shows_comparison(qtbot, monkeypatch):
+    seen = {}
+
+    def fake_generate(source, entry_point, **kwargs):
+        seen.update(kwargs)
+        result = _generation()
+        result.baseline = CoverageReport(2, 4, 1, 2)
+        result.user_outcome = "failed"
+        return result
+
+    monkeypatch.setattr(rl_page.rl_service, "generate", fake_generate)
+    page = RLPage()
+    qtbot.addWidget(page)
+    page.set_source(SOURCE, module_name="hesap")
+    page.set_user_tests("from hesap import f\n\n\ndef test_f():\n    assert f(0) == 0\n")
+    page.generate_button.click()
+    qtbot.waitUntil(lambda: page.test_list.count() == 1, timeout=5000)
+    assert seen["module_name"] == "hesap" and "def test_f" in seen["user_tests"]
+    assert page.tile_rate.detail.text().startswith("kullanıcı testleri %50 → + RL")
+    assert page.tile_lines.detail.text() == "kullanıcı testleri: 2"
+    assert "kullanıcı testleri başarısız" in page.status.text()

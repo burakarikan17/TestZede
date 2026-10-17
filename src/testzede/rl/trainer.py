@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, fields
 
 from testzede.domain.models import CodeUnit, CoverageReport, RunStats, TestCase
@@ -69,6 +69,7 @@ class EpisodeResult:
     curve: list[CurvePoint]
     total_reward: float
     steps: int
+    baseline: CoverageReport | None = None  # yalnızca kullanıcı testlerinin coverage'ı
 
     def score(self) -> tuple[float, float, int]:
         """Karşılaştırma anahtarı: önce branch, sonra satır coverage, sonra az test."""
@@ -81,7 +82,7 @@ def run_episode(
     """Bir epizot oynatır; ``learn`` ise Q-tablosunu günceller."""
     obs, _ = env.reset(seed=seed)
     total = 0.0
-    done = False
+    done = env.fully_covered  # kullanıcı testleri zaten tam kapsıyorsa test üretilmez
     while not done:
         action = agent.select_action(obs, greedy=not learn)
         next_obs, reward, terminated, truncated, _ = env.step(action)
@@ -98,6 +99,7 @@ def run_episode(
         curve=list(ep.curve),
         total_reward=total,
         steps=ep.step,
+        baseline=env.baseline_report(),
     )
 
 
@@ -108,10 +110,13 @@ def generate_tests(
     *,
     agent: QLearningAgent | None = None,
     seed: int | None = None,
+    baseline: Sequence[TestCase] = (),
 ) -> EpisodeResult:
     """Kod birimi için ``config.episodes`` epizot oynatır, en iyi epizodun testlerini döner.
 
     ``agent`` verilirse Q-tablosu birimler arasında paylaşılır (toplu çalıştırma).
+    ``baseline`` kullanıcının kendi testleridir; RL bunların coverage'ını artırmaya çalışır
+    ve dönen ``tests`` yalnızca RL'nin eklediği testlerdir.
     Çalıştırma istatistikleri (``stats``) tüm epizotların toplamıdır.
 
     Raises:
@@ -119,7 +124,7 @@ def generate_tests(
     """
     config = config or RLConfig()
     agent = agent or config.make_agent(seed=seed)
-    env = TestGenEnv(unit, executor, weights=config.weights, config=config.env)
+    env = TestGenEnv(unit, executor, weights=config.weights, config=config.env, baseline=baseline)
     best: EpisodeResult | None = None
     generated = compiled = 0
     elapsed = 0.0
