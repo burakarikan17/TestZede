@@ -17,7 +17,7 @@ from testzede.domain.models import CodeUnit, CoverageReport, RunStats, TestCase
 from testzede.rl.actions import ACTION_NAMES, ACTION_REGISTRY, ActionContext
 from testzede.rl.executor import Executor
 from testzede.rl.reward import RewardWeights, branch_rate, compute_reward, line_rate
-from testzede.rl.signature import extract_params, parse_seed_inputs
+from testzede.rl.signature import extract_params, is_generator, parse_seed_inputs
 from testzede.rl.state import discretize, state_index
 from testzede.rl.synthesizer import output_class, synthesize
 
@@ -99,6 +99,7 @@ class TestGenEnv:
         self._rng = random.Random()
         self._params = ()
         self._seeds: tuple[tuple, ...] = ()
+        self._generator = False
 
     @property
     def entry_point(self) -> str:
@@ -118,6 +119,7 @@ class TestGenEnv:
         self._rng = random.Random(seed)
         self._params = extract_params(self.unit)
         self._seeds = parse_seed_inputs(self.unit)
+        self._generator = is_generator(self.unit)
         self.episode = EpisodeState()
         return self.observe(), {}
 
@@ -172,7 +174,7 @@ class TestGenEnv:
             self.unit, repr(tuple(args)), timeout=self.config.call_timeout_s
         )
         ep.execution_time_s += outcome.duration_s
-        test = synthesize(self.entry_point, args, outcome, ep.step)
+        test = synthesize(self.entry_point, args, outcome, ep.step, generator=self._generator)
         if test is None:
             return None, args, ""
 

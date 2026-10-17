@@ -44,3 +44,25 @@ def test_huge_int_repr_error_is_ok_without_value():
 def test_oversized_repr_is_dropped_not_truncated():
     r = call_function(_unit("def f():\n    return 'a' * 20000"), "()")
     assert (r.status, r.value_repr) == ("ok", None)
+
+
+def test_generator_function_is_consumed_up_to_the_limit():
+    from testzede.execution.sandbox import GENERATOR_LIMIT
+    from testzede.rl.executor import GENERATOR_LIMIT as RL_LIMIT
+
+    assert GENERATOR_LIMIT == RL_LIMIT
+    r = call_function(
+        _unit("import itertools\ndef f(n):\n    yield from itertools.count(n)"), "(0,)"
+    )
+    assert r.status == "ok"
+    assert r.value_repr == repr(list(range(GENERATOR_LIMIT)))
+
+
+def test_exception_inside_generator_is_raised():
+    r = call_function(_unit("def f(n):\n    yield 1\n    raise ValueError(n)"), "(0,)")
+    assert (r.status, r.exc_type) == ("raised", "ValueError")
+
+
+def test_returned_generator_object_is_not_consumed():
+    r = call_function(_unit("def f(n):\n    return (i for i in range(n))"), "(2,)")
+    assert r.status == "ok" and r.value_repr.startswith("<generator")
