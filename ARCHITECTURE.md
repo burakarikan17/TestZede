@@ -166,6 +166,17 @@ parti isimlere dayananlar. Sınıf metotları kapsam dışıdır.
 - `batch/runner.py`: her `CodeUnit` için metrik → RL → coverage → mutasyon → tahmin
   hattını çalıştırır. Sonuçları veri seti bazında `reports/` altına CSV/HTML/XLSX
   olarak yazar.
+  - RL, `execution/executor.py`'deki `SandboxExecutor` ile çalışır (sandbox + coverage_runner).
+  - Coverage ve **test çalıştırma süresi**, RL'nin seçtiği test paketinin bir kez baştan
+    çalıştırılmasıyla ölçülür. **Derlenebilirlik oranı**, RL'nin ürettiği tüm testler
+    üzerindendir (seçilmeyenler dahil).
+  - Mutasyon ve tahmin aşamaları `BatchConfig.mutation` / `BatchConfig.prediction`
+    üzerinden takılır. Verilmezse rapordaki sütunları boş kalır.
+  - Bir aşama hata verirse hata `UnitResult.error`'a yazılır, önceki aşamaların sonuçları
+    korunur, çalıştırma bir sonraki birimle sürer. `progress` ve `should_stop` geri
+    çağrıları GUI'deki ilerleme çubuğu ve "Durdur" düğmesi içindir.
+  - Q-tablosu birimler arasında paylaşılır (`batch.share_agent`). `i`. birim `seed + i`
+    tohumunu kullanır, böylece aynı yapılandırma aynı sonucu verir.
 
 ## 4. Data leakage'sız veri ayrımı
 
