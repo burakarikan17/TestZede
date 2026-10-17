@@ -6,6 +6,7 @@ from testzede.rl.signature import (
     SignatureError,
     TypeSpec,
     extract_params,
+    is_generator,
     parse_seed_inputs,
 )
 
@@ -76,3 +77,33 @@ def test_parse_seed_inputs_skips_non_literal_and_other_calls():
         examples=(">>> f([1, 2], 'a')", ">>> f(x)", ">>> g(1)", ">>> f(1)\n", "garbage("),
     )
     assert parse_seed_inputs(unit) == (([1, 2], "a"), (1,))
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("def g(n):\n    for i in range(n):\n        yield i\n", True),
+        ("def g(xs):\n    yield from xs\n", True),
+        ("def g(n):\n    return (i for i in range(n))\n", False),
+        ("def g(n):\n    def inner():\n        yield n\n    return inner\n", False),
+        ("def g(n):\n    return n\n", False),
+        ("def g(:\n", False),
+    ],
+)
+def test_is_generator(source, expected):
+    assert is_generator(CodeUnit("t/0", source, entry_point="g")) is expected
+
+
+def test_parse_seed_inputs_unwraps_consumers():
+    unit = CodeUnit(
+        "t/0",
+        "def g(xs, d=1):\n    yield xs\n",
+        entry_point="g",
+        seed_examples=(
+            ">>> list(g([1, 2, 3]))",
+            ">>> sorted(g([3], -1))",
+            ">>> len(g([1]))",
+            ">>> list(other([1]))",
+        ),
+    )
+    assert parse_seed_inputs(unit) == (([1, 2, 3],), ([3], -1))

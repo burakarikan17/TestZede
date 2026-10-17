@@ -7,7 +7,7 @@ import pytest
 from PySide6.QtWidgets import QAbstractItemView
 
 from testzede.domain.models import MutationReport, RunStats, TestCase
-from testzede.gui.app import create_main_window
+from testzede.gui.main_window import MainWindow
 from testzede.gui.pages import mutation_logic as logic
 from testzede.gui.pages.mutation_page import (
     DEFAULT_MAX_MUTANTS,
@@ -87,6 +87,26 @@ class FakeEngine:
         return self.result
 
 
+_LIVE_PAGES: list[MutationPage] = []
+
+
+@pytest.fixture(autouse=True)
+def _shutdown_pages():
+    """Sayfaları teardown'a kadar canlı tutar, sonra iş parçacıklarının bitmesini bekler.
+
+    pytest-qt widget'ları zayıf referansla tutar: test dönünce sayfa silinir ve iş parçacığı
+    henüz tam bitmemişse Qt süreci sonlandırır. Uygulamada bunu ``MainWindow`` kapanırken yapar.
+    """
+    yield
+    while _LIVE_PAGES:
+        _LIVE_PAGES.pop().shutdown()
+
+
+def _add_page(qtbot, page: MutationPage) -> None:
+    qtbot.addWidget(page)
+    _LIVE_PAGES.append(page)
+
+
 def _page(
     qtbot,
     engine: FakeEngine | None = None,
@@ -102,11 +122,13 @@ def _page(
 
     state = AppState(source=source, tests=list(TESTS if tests is None else tests))
     page = MutationPage(state, service_factory=factory)
-    qtbot.addWidget(page)
+    _add_page(qtbot, page)
     return page, engine, max_calls
 
 
 def _run_and_wait(qtbot, page: MutationPage, timeout: int = 10000) -> bool:
+    # Önceki iş parçacığının temizliği (TaskRunner._cleanup) sonuç sinyalinden sonra gelir.
+    qtbot.waitUntil(lambda: not page._tasks.busy, timeout=5000)
     with qtbot.waitSignal(page.run_completed, timeout=timeout) as blocker:
         page.run_button.click()
     return blocker.args[0]
@@ -188,7 +210,7 @@ def test_default_factory_is_the_service_layer_factory(qtbot):
     from testzede.services.mutation_service import create_mutation_service
 
     page = MutationPage(AppState(source=SOURCE, tests=list(TESTS)))
-    qtbot.addWidget(page)
+    _add_page(qtbot, page)
     assert page._service_factory is create_mutation_service
 
 
@@ -203,7 +225,7 @@ def test_spinbox_value_reaches_the_default_service_factory(qtbot, monkeypatch):
 
     monkeypatch.setattr(mutation_page, "create_mutation_service", fake_factory)
     page = MutationPage(AppState(source=SOURCE, tests=list(TESTS)))  # varsayılan fabrika
-    qtbot.addWidget(page)
+    _add_page(qtbot, page)
     page.max_spin.setValue(33)
     _run_and_wait(qtbot, page)
     assert calls == [33]
@@ -283,20 +305,35 @@ def test_cancel_without_running_job_is_a_noop(qtbot):
     assert page.status_label.text() == ""
 
 
-def test_stop_worker_cancels_running_job_and_waits(qtbot):
+def test_shutdown_cancels_running_job_and_waits(qtbot):
     engine = FakeEngine("cancel_before_progress")
     page, _, _ = _page(qtbot, engine)
     page.run_button.click()
     qtbot.waitUntil(engine.started.is_set, timeout=5000)
-    thread = page._thread
-    page._stop_worker()  # uygulama kapanırken: önce iptal, sonra bekle
+    thread = page._tasks._thread
+    page.shutdown()  # pencere kapanırken: önce iptal, sonra bekle
     assert thread.isFinished()
-    qtbot.waitUntil(lambda: page._thread is None, timeout=5000)
+    qtbot.waitUntil(lambda: not page._tasks.busy, timeout=5000)
 
 
-def test_stop_worker_is_a_noop_when_idle(qtbot):
+def test_shutdown_is_a_noop_when_idle(qtbot):
     page, _, _ = _page(qtbot)
-    page._stop_worker()
+    page.shutdown()
+
+
+def test_closing_main_window_shuts_down_running_job(qtbot):
+    engine = FakeEngine("cancel_before_progress")
+    state = AppState(source=SOURCE, tests=list(TESTS))
+    window = MainWindow(
+        state, pages=(lambda s: MutationPage(s, lambda _: MutationService(engine)),)
+    )
+    qtbot.addWidget(window)
+    page = window.page("Mutasyon")
+    page.run_button.click()
+    qtbot.waitUntil(engine.started.is_set, timeout=5000)
+    thread = page._tasks._thread
+    window.close()
+    assert thread.isFinished()
 
 
 # --- hatalar -----------------------------------------------------------------------------------
@@ -307,7 +344,7 @@ def test_stop_worker_is_a_noop_when_idle(qtbot):
     [
         ("service_error", "Kaynak kod geçerli değil"),
         ("mutation_error", "Testler orijinal kodda geçmiyor"),  # servis ServiceError'a çevirir
-        ("crash", "beklenmedik"),
+        ("crash", "Beklenmeyen hata: beklenmedik"),
     ],
 )
 def test_errors_are_shown_in_red_without_crashing(qtbot, mode, message):
@@ -437,10 +474,10 @@ def test_on_enter_renders_result_set_by_another_component(qtbot):
 
 
 def test_main_window_registers_mutation_page(qtbot):
-    window = create_main_window()
+    window = MainWindow()
     qtbot.addWidget(window)
     assert isinstance(window.page("Mutasyon"), MutationPage)
-    window.menu.setCurrentRow(3)
+    window.nav.setCurrentRow(3)
     assert window.stack.currentWidget() is window.page("Mutasyon")
 
 
@@ -448,7 +485,7 @@ def test_end_to_end_with_real_engine_finds_surviving_mutants(qtbot):
     source = "def f(a):\n    if a > 0:\n        return 1\n    return 2\n"
     tests = [TestCase("test_one", "def test_one():\n    assert f(1) == 1", "user")]
     page = MutationPage(AppState(source=source, tests=tests))  # gerçek motor ve servis
-    qtbot.addWidget(page)
+    _add_page(qtbot, page)
     assert _run_and_wait(qtbot, page, timeout=120000) is True
 
     assert page.status_label.text() == "Tamamlandı."

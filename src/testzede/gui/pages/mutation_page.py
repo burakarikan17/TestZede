@@ -5,11 +5,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt, QThread, Signal, Slot
+from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QColor, QTextCursor, QTextFormat
 from PySide6.QtWidgets import (
     QAbstractItemView,
-    QApplication,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -30,7 +29,7 @@ from testzede.gui.pages import mutation_logic as logic
 from testzede.gui.pages.base import BasePage
 from testzede.gui.state import AppState
 from testzede.gui.styles import apply_monospace, fix_table_header
-from testzede.gui.workers import Worker, run_in_thread
+from testzede.gui.worker import TaskRunner, Worker
 from testzede.services.mutation_service import MutationService, create_mutation_service
 
 if TYPE_CHECKING:
@@ -66,8 +65,8 @@ class MutationPage(BasePage):
     ) -> None:
         super().__init__(PAGE_TITLE, state, parent)
         self._service_factory = service_factory or create_mutation_service
-        self._worker: Worker | None = None
-        self._thread: QThread | None = None
+        self._tasks = TaskRunner(self)
+        self._running = False
         self._pending: tuple[str, list[TestCase]] | None = None  # çalışan işin girdisi
         self._cancel_requested = False
         self._last_progress: tuple[int, int] | None = None
@@ -151,9 +150,6 @@ class MutationPage(BasePage):
         self.run_button.clicked.connect(self.run)
         self.cancel_button.clicked.connect(self.cancel)
         self.survivors_table.itemSelectionChanged.connect(self._on_selection_changed)
-        app = QApplication.instance()
-        if app is not None:  # uygulama kapanırken çalışan iş güvenle durdurulur
-            app.aboutToQuit.connect(self._stop_worker)
         self._clear_view()
         self._refresh_run_state()
 
@@ -161,7 +157,7 @@ class MutationPage(BasePage):
 
     def run(self) -> None:
         """Mutasyon analizini arka planda başlatır; girdi eksikse nedenini gösterir."""
-        if self._thread is not None:
+        if self._running or self._tasks.busy:
             return
         if self._input_problem():
             self._refresh_run_state()
@@ -169,11 +165,15 @@ class MutationPage(BasePage):
         source, tests = self.state.source, list(self.state.tests)
         service = self._service_factory(self.max_spin.value())
 
-        def job(progress_callback, should_cancel):
+        def job(worker: Worker) -> MutationRun:
             return service.run_detailed(
-                source, tests, progress_callback=progress_callback, should_cancel=should_cancel
+                source,
+                tests,
+                progress_callback=lambda done, total: worker.report((done, total)),
+                should_cancel=worker.stop_requested,
             )
 
+        self._running = True
         self._pending = (source, tests)
         self._cancel_requested = False
         self._last_progress = None
@@ -182,25 +182,30 @@ class MutationPage(BasePage):
         self.max_spin.setEnabled(False)
         self.cancel_button.setEnabled(True)
         self._set_status("Çalışıyor...", "info")
-        worker = Worker(job)
-        worker.progress.connect(self._on_progress)
-        worker.finished.connect(self._on_finished)
-        worker.failed.connect(self._on_failed)
-        self._worker = worker
-        self._thread = run_in_thread(worker)
+        self._tasks.start(
+            job,
+            on_finished=self._on_finished,
+            on_failed=self._on_failed,
+            on_progress=self._on_progress,
+        )
 
     def cancel(self) -> None:
         """Çalışan analizi iptal ister; motor o ana kadarki sonucu döndürür."""
-        if self._worker is None:
+        if not self._running:
             return
         self._cancel_requested = True
-        self._worker.cancel()
+        self._tasks.request_stop()
         self.cancel_button.setEnabled(False)
         self._set_status("İptal ediliyor...", "info")
 
-    @Slot(int, int)
-    def _on_progress(self, done: int, total: int) -> None:
-        """İlerleme çubuğunu günceller."""
+    def shutdown(self) -> None:
+        """Pencere kapanırken çalışan işi iptal eder ve (üst sınırla) bitmesini bekler."""
+        self._tasks.shutdown(timeout_ms=_WAIT_AT_EXIT_MS)
+
+    @Slot(object)
+    def _on_progress(self, value: tuple[int, int]) -> None:
+        """İlerleme çubuğunu günceller; ``value`` ``(biten, toplam)`` demetidir."""
+        done, total = value
         self._last_progress = (done, total)
         self.progress_bar.setRange(0, max(total, 1))
         self.progress_bar.setValue(done)
@@ -208,7 +213,7 @@ class MutationPage(BasePage):
     @Slot(object)
     def _on_finished(self, run: object) -> None:
         """Sonucu (iptalde kısmi sonucu) ``AppState``'e yazar ve görünümü doldurur."""
-        self._join_thread()
+        self._set_idle()
         source, tests = self._pending or (self.state.source, list(self.state.tests))
         self._pending = None
         progress = self._last_progress
@@ -231,27 +236,16 @@ class MutationPage(BasePage):
     @Slot(str)
     def _on_failed(self, message: str) -> None:
         """Hatayı (ServiceError ya da beklenmeyen) kırmızı mesajla gösterir."""
-        self._join_thread()
+        self._set_idle()
         self._pending = None
         self._finish_progress(cancelled=True)
         self._refresh_run_state()
         self._set_status(message, "error")
         self.run_completed.emit(False)
 
-    @Slot()
-    def _stop_worker(self) -> None:
-        """Uygulama kapanırken çalışan işi iptal eder ve (üst sınırla) bitmesini bekler."""
-        if self._thread is not None:
-            if self._worker is not None:
-                self._worker.cancel()
-            self._thread.wait(_WAIT_AT_EXIT_MS)
-
-    def _join_thread(self) -> None:
-        """Biten iş parçacığını bekler ve referanslarını bırakır."""
-        if self._thread is not None:
-            self._thread.wait(5000)
-        self._thread = None
-        self._worker = None
+    def _set_idle(self) -> None:
+        """İşin bittiğini işaretler; iptal düğmesini kapatır."""
+        self._running = False
         self.cancel_button.setEnabled(False)
 
     def _finish_progress(self, cancelled: bool) -> None:
@@ -291,7 +285,7 @@ class MutationPage(BasePage):
 
     def _refresh_run_state(self) -> None:
         """Çalışmıyorsa düğmeleri girdi durumuna göre ayarlar ve nedeni gösterir."""
-        if self._thread is not None:
+        if self._running:
             return
         problem = self._input_problem()
         self.run_button.setEnabled(not problem)

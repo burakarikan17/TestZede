@@ -1,7 +1,16 @@
-"""Ana pencere: solda menü, sağda sayfa yığını."""
+"""Ana pencere: solda sayfa listesi, sağda seçili sayfa.
+
+Yeni sayfa ``PAGES``'e eklenir. Her sayfa :class:`BasePage`'den türer ve
+paylaşılan :class:`AppState`'i alır; sayfa açıldığında ``on_enter()`` çağrılır.
+Arka planda iş çalıştıranlar ``shutdown()`` tanımlar (pencere kapanırken çağrılır).
+"""
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
+
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QListWidget,
@@ -11,77 +20,61 @@ from PySide6.QtWidgets import (
 )
 
 from testzede.gui.pages.base import BasePage
-from testzede.gui.pages.placeholder import PlaceholderPage
+from testzede.gui.pages.batch_page import BatchPage
+from testzede.gui.pages.code_page import CodePage
+from testzede.gui.pages.coverage_page import CoveragePage
+from testzede.gui.pages.mutation_page import MutationPage
+from testzede.gui.pages.rl_page import RLPage
 from testzede.gui.state import AppState
 
-MENU_ITEMS = (
-    "Kod Yükle",
-    "Test Üretimi",
-    "Coverage",
-    "Mutasyon",
-    "Tahmin",
-    "Toplu Test",
-    "Raporlar",
-    "Ayarlar",
-)
+PageFactory = Callable[[AppState], BasePage]
+
+# Diğer sayfalar (Çağrı Grafiği, Metrikler, Tahmin) sahipleri tarafından
+# ARCHITECTURE.md §6'daki sırayla buraya eklenir.
+PAGES: tuple[PageFactory, ...] = (CodePage, CoveragePage, RLPage, MutationPage, BatchPage)
 
 
 class MainWindow(QMainWindow):
-    """Menüden seçilen sayfayı gösterir; kayıtsız menüler yer tutucu sayfa gösterir."""
-
-    def __init__(self, state: AppState | None = None) -> None:
+    def __init__(self, state: AppState | None = None, pages: Sequence[PageFactory] = PAGES) -> None:
         super().__init__()
         self.state = state if state is not None else AppState()
         self.setWindowTitle("TestZede")
-        self.resize(1100, 700)
-
-        self.menu = QListWidget()
-        self.menu.setFixedWidth(200)
-        self.menu.addItems(MENU_ITEMS)
+        self.resize(1200, 780)
+        self.nav = QListWidget()
+        self.nav.setFixedWidth(200)
         self.stack = QStackedWidget()
+        self.pages: list[BasePage] = []
+        for factory in pages:
+            page = factory(self.state)
+            self.pages.append(page)
+            self.stack.addWidget(page)
+            self.nav.addItem(page.title)
+        self.nav.currentRowChanged.connect(self._on_row_changed)
+        self.nav.setCurrentRow(0)
 
         central = QWidget()
         layout = QHBoxLayout(central)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self.menu)
+        layout.addWidget(self.nav)
         layout.addWidget(self.stack, 1)
         self.setCentralWidget(central)
 
-        self._pages: dict[str, BasePage] = {}
-        for name in MENU_ITEMS:
-            page = PlaceholderPage(name, self.state)
-            self._pages[name] = page
-            self.stack.addWidget(page)
-
-        self.menu.currentRowChanged.connect(self._on_row_changed)
-        self.menu.setCurrentRow(0)
-
-    def page(self, name: str) -> BasePage:
-        """Menü adına karşılık gelen sayfayı döndürür."""
-        return self._pages[name]
-
-    def current_page(self) -> BasePage:
-        """Şu an görünen sayfayı döndürür."""
-        return self._pages[MENU_ITEMS[self.stack.currentIndex()]]
-
-    def register_page(self, name: str, page: BasePage) -> None:
-        """Menü öğesinin yer tutucusunu ``page`` ile değiştirir; bilinmeyen ada ``ValueError``."""
-        if name not in MENU_ITEMS:
-            raise ValueError(f"Bilinmeyen menü öğesi: {name}")
-        index = MENU_ITEMS.index(name)
-        old = self._pages[name]
-        self.stack.removeWidget(old)
-        old.deleteLater()
-        self.stack.insertWidget(index, page)
-        self._pages[name] = page
-        current = self.menu.currentRow()
-        self.stack.setCurrentIndex(current)
-        if current == index:
-            page.on_enter()
+    def page(self, title: str) -> BasePage:
+        """Başlığı verilen sayfa."""
+        for page in self.pages:
+            if page.title == title:
+                return page
+        raise KeyError(title)
 
     def _on_row_changed(self, row: int) -> None:
-        """Menü seçimi değişince sayfayı gösterir ve ``on_enter`` çağırır."""
         if row < 0:
             return
         self.stack.setCurrentIndex(row)
-        self._pages[MENU_ITEMS[row]].on_enter()
+        self.pages[row].on_enter()
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        self.setCursor(Qt.CursorShape.WaitCursor)
+        for page in self.pages:
+            shutdown = getattr(page, "shutdown", None)
+            if callable(shutdown):
+                shutdown()
+        super().closeEvent(event)

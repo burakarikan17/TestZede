@@ -122,6 +122,8 @@ Her **epizot** bir `CodeUnit` (test edilen fonksiyon) üzerinde geçer.
 | Bitiş | %100 branch coverage, maksimum adım ya da N adım boyunca coverage artışı olmaması |
 | Oracle | Girdi, referans (canonical) çözümde çalıştırılır; çıktı `assert` olarak yazılır (regresyon oracle'ı). İstisna fırlatan girdiler `pytest.raises` testine dönüşür. |
 | Ajan | Temel: tabular Q-learning (ε-greedy). Opsiyonel karşılaştırma: gymnasium uyumlu ortam üzerinde stable-baselines3 PPO. |
+| Kullanıcı testleri (US-3 artırım) | Kullanıcı kendi test dosyasını verirse ortam her epizoda bu testlerin coverage'ıyla başlar; RL yalnızca kapsanmayan satır/dallar için test ekler. Test dosyasındaki kaynak modülü import'ları `target`'a çevrilir. Kullanıcı testleri zaten tam kapsıyorsa test üretilmez. Sonuç "kullanıcı testleri" ve "kullanıcı testleri + RL" coverage'ı olarak iki değer verir. |
+| Generator fonksiyonları | Oracle ve üretilen testler ilk `GENERATOR_LIMIT` (50) öğeyi `list(islice(f(...), 50))` ile tüketir; aksi halde gövde hiç çalışmaz. |
 
 Çıktı: `TestCase` listesi + epizot boyunca coverage eğrisi. Coverage eğrisi
 opsiyonel tahmin modülünde optimum test sayısının hedef değeri olarak kullanılır.
@@ -166,6 +168,17 @@ parti isimlere dayananlar. Sınıf metotları kapsam dışıdır.
 - `batch/runner.py`: her `CodeUnit` için metrik → RL → coverage → mutasyon → tahmin
   hattını çalıştırır. Sonuçları veri seti bazında `reports/` altına CSV/HTML/XLSX
   olarak yazar.
+  - RL, `execution/executor.py`'deki `SandboxExecutor` ile çalışır (sandbox + coverage_runner).
+  - Coverage ve **test çalıştırma süresi**, RL'nin seçtiği test paketinin bir kez baştan
+    çalıştırılmasıyla ölçülür. **Derlenebilirlik oranı**, RL'nin ürettiği tüm testler
+    üzerindendir (seçilmeyenler dahil).
+  - Mutasyon ve tahmin aşamaları `BatchConfig.mutation` / `BatchConfig.prediction`
+    üzerinden takılır. Verilmezse rapordaki sütunları boş kalır.
+  - Bir aşama hata verirse hata `UnitResult.error`'a yazılır, önceki aşamaların sonuçları
+    korunur, çalıştırma bir sonraki birimle sürer. `progress` ve `should_stop` geri
+    çağrıları GUI'deki ilerleme çubuğu ve "Durdur" düğmesi içindir.
+  - Q-tablosu birimler arasında paylaşılır (`batch.share_agent`). `i`. birim `seed + i`
+    tohumunu kullanır, böylece aynı yapılandırma aynı sonucu verir.
 
 ## 4. Data leakage'sız veri ayrımı
 
@@ -220,3 +233,16 @@ PySide6 + qt-material (Material Design teması). Sayfalar ve sahipleri:
 | Tahmin | Tahmini hata ve optimum test sayısı | Burak |
 
 Uzun işlemlerin tamamı `QThread` içinde çalışır; GUI iş parçacığı asla bloklanmaz.
+
+- Giriş: `testzede gui` → `gui/app.py` (qt-material teması, global `sys.excepthook`).
+- `gui/main_window.py`: soldaki listeden sayfa seçilir. Yeni sayfa `PAGES` demetine yukarıdaki
+  sırayla eklenir; `PAGES` öğesi `AppState` alıp sayfa döndüren bir fabrikadır (sayfa sınıfının
+  kendisi olabilir). Sayfa seçilince `on_enter()` çağrılır; arka planda iş çalıştıran sayfa
+  `shutdown()` tanımlar (pencere kapanırken çağrılır).
+- `gui/pages/base.py`: `BasePage(title, state)` tüm sayfaların tabanı; `title` ve boş `on_enter()`.
+- `gui/state.py`: `AppState` sayfalar arasında paylaşılan durum (yüklenen kod, testler, son
+  coverage ve mutasyon sonucu). Tek örnek `MainWindow` tarafından oluşturulur.
+- `gui/worker.py`: `TaskRunner` işi `QThread`'de çalıştırır; sonuç, ilerleme ve hata
+  sinyalle gelir. `ServiceError` mesajı olduğu gibi gösterilir.
+- Sayfalar yalnızca `services/` cephelerini kullanır (`rl_service`, `batch_service`,
+  `coverage_service`, `mutation_service`).

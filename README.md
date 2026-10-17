@@ -80,12 +80,19 @@ ve yalnızca standart kütüphaneye dayanan, tek başına çalışabilen fonksiy
 ## Çalıştırma
 
 ```bash
-testzede gui                                          # masaüstü arayüz
-testzede batch --dataset humaneval --split external   # toplu test
-testzede batch --all --report html                    # tüm setler, HTML rapor
+testzede gui                                         # masaüstü arayüz
+testzede batch --split external                      # dış test seti (HumanEval + Small67)
+testzede batch --split main --only testgeneval       # splitin bir veri seti
+testzede batch --dataset small67 --limit 5           # split olmadan, ilk 5 birim (deneme)
+testzede batch --split external --formats html xlsx  # yalnızca bu biçimler
 ```
 
-Raporlar `reports/<tarih>/<veri_seti>/` altına yazılır.
+Raporlar `reports/<tarih>/<veri_seti>/` altına yazılır (`results`, `summary`, `meta`
+CSV'leri, `report.xlsx`, `report.html`). Her rapor kullanılan split dosyasının SHA-256
+özetini ve yapılandırma dosyasının adını taşır. Yapılandırma varsayılan olarak
+`configs/frozen.yaml`'dan, o yoksa `configs/default.yaml`'dan okunur (`--config` ile
+değiştirilebilir). `frozen.yaml` development split'inde yapılan ayar taramasının sonucudur
+(tablo dosyanın başında); ana deney ve dış test setlerinde değiştirilmez. Bir birimde hata olursa çalıştırma durmaz; hata `error` sütununa yazılır.
 
 ## Proje yapısı
 

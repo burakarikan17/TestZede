@@ -15,7 +15,7 @@ from result_builders import make_result
 
 from testzede.domain.models import MutationReport, RunStats, TestCase
 from testzede.gui import styles
-from testzede.gui.app import apply_theme, create_main_window
+from testzede.gui.app import _apply_theme
 from testzede.gui.main_window import MainWindow
 from testzede.mutation.engine import MutationRun
 from testzede.mutation.operators import generate_all
@@ -27,8 +27,8 @@ PADDING = 24  # QHeaderView::section { padding: 0 24px } (qt-material)
 @pytest.fixture
 def themed(qtbot, qapp) -> MainWindow:
     """Tema uygulanmış, sonuçları yüklenmiş, görünür ana pencere."""
-    assert apply_theme(qapp)
-    window = create_main_window()
+    _apply_theme(qapp)
+    window = MainWindow()
     qtbot.addWidget(window)
     state = window.state
     state.source = SOURCE
@@ -45,8 +45,8 @@ def themed(qtbot, qapp) -> MainWindow:
     window.resize(1200, 700)
     window.show()
     qtbot.waitExposed(window)
-    for row in (2, 3):  # Coverage, Mutasyon: on_enter sonuçları çizer
-        window.menu.setCurrentRow(row)
+    for row in (1, 3):  # Coverage, Mutasyon: on_enter sonuçları çizer
+        window.nav.setCurrentRow(row)
         qtbot.wait(20)
     yield window
     qapp.setStyleSheet("")
@@ -106,7 +106,10 @@ def test_fallback_font_is_registered_once(themed):
 
 def _row_rect(view: QPlainTextEdit, number: int):
     block = view.document().findBlockByNumber(number)
-    return view.blockBoundingGeometry(block).translated(view.contentOffset()).toRect()
+    rect = view.blockBoundingGeometry(block).translated(view.contentOffset()).toRect()
+    # Son blok belgenin alt kenar boşluğunu da kapsar; satır vurgusu orada bitmiş olur.
+    rect.setHeight(min(rect.height(), view.fontMetrics().lineSpacing()))
+    return rect
 
 
 def _char_x(view: QPlainTextEdit, number: int, column: int) -> int:
@@ -116,16 +119,18 @@ def _char_x(view: QPlainTextEdit, number: int, column: int) -> int:
     return view.cursorRect(cursor).x()
 
 
-def _glyph_mask(img: QImage, x: int, width: int, rect, height: int = 20) -> list[list[bool]]:
-    """Satır zemininden belirgin açık pikselleri (yazı) işaretler; dikeyde yazıya kırpılır.
+def _glyph_mask(img: QImage, x: int, width: int, rect) -> list[list[bool]]:
+    """Satır zemininden parlaklığı belirgin farklı pikselleri (yazı) işaretler; dikeyde yazıya kırpılır.
 
-    Satır dikdörtgenleri yuvarlama yüzünden 1 piksel kayabildiği için boş üst/alt satırlar atılır.
+    Fark mutlak alınır: açık temada yazı zeminden koyu, koyu temada açıktır. Komşu satırların
+    zemini sayılmasın diye yalnızca satırın içi taranır (yuvarlamaya karşı 1 piksel pay bırakılır);
+    boş üst/alt satırlar atılır.
     """
-    bg = img.pixelColor(img.width() - 3, rect.center().y()).lightness()
-    top = rect.center().y() - height // 2
+    # Zemin, aynı satırda yazıdan hemen önceki (boşluk) hücrenin ortasından okunur.
+    bg = img.pixelColor(x - width // 12, rect.center().y()).lightness()
     rows = [
-        [img.pixelColor(px, py).lightness() - bg > 60 for px in range(x, x + width)]
-        for py in range(top, top + height)
+        [abs(img.pixelColor(px, py).lightness() - bg) > 60 for px in range(x, x + width)]
+        for py in range(rect.top() + 1, rect.bottom())
     ]
     inked = [i for i, row in enumerate(rows) if any(row)]
     return rows[inked[0] : inked[-1] + 1] if inked else []

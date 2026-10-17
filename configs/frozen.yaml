@@ -1,0 +1,34 @@
+# Dondurulmuş RL ayarları (ARCHITECTURE §4, kural 5).
+# Yalnızca development split'inde (TestGenEvalLite, 134 birim) ayarlandı. Ana deney (main)
+# ve dış test (external) split'lerinde bu değerler DEĞİŞTİRİLMEZ. Bu dosya varsa
+# `testzede batch` ve GUI otomatik olarak bunu kullanır.
+#
+# Ayar taraması (development, seed 0, generator düzeltmesi sonrası):
+#   ayar                       ort.test  satır   branch  tam satır
+#   varsayılan (default.yaml)  1.60      %71.5   %44.3   %43
+#   patience 20                1.75      %72.9   %48.1   %46
+#   patience 20 + ε 0.4        1.70      %73.7   %48.0   %48
+#   episodes 3                 1.53      %73.8   %47.6   %49
+#   ε_cost 0.02 + γ 1.0        1.61      %71.8   %45.6   %43
+#   patience 20 + episodes 3   1.63      %74.3   %49.4   %51   <- seçilen
+# Bedeli: birim başına süre ~5 kat (development: ~7 dk -> ~35 dk).
+reward:
+  alpha: 1.0    # Δline
+  beta: 2.0     # Δbranch
+  gamma: 0.5    # yeni çıktı sınıfı
+  delta: 1.0    # geçersiz/timeout cezası
+  epsilon: 0.05 # test başı maliyet
+agent:
+  type: q_learning
+  learning_rate: 0.1
+  discount: 0.9
+  epsilon_greedy: 0.2
+  max_steps: 50
+  patience: 20
+  episodes: 3
+sandbox:
+  timeout_s: 10
+batch:
+  seed: 0
+  share_agent: true
+  suite_timeout_s: 60

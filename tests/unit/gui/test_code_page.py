@@ -6,7 +6,7 @@ import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QFileDialog
 
-from testzede.gui.app import create_main_window
+from testzede.gui.main_window import MainWindow
 from testzede.gui.pages import code_page as code_page_module
 from testzede.gui.pages.code_page import CodePage, check_source, read_source_file
 from testzede.gui.state import AppState
@@ -299,7 +299,7 @@ def test_unexpected_error_in_dialog_flow_is_a_value_error_only(page, monkeypatch
 
 
 def test_main_window_registers_code_page_under_kod_yukle(qtbot):
-    window = create_main_window()
+    window = MainWindow()
     qtbot.addWidget(window)
     assert isinstance(window.page("Kod Yükle"), CodePage)
     assert window.page("Kod Yükle").state is window.state
@@ -307,10 +307,10 @@ def test_main_window_registers_code_page_under_kod_yukle(qtbot):
 
 
 def test_menu_return_syncs_code_page_with_external_state_change(qtbot):
-    window = create_main_window()
+    window = MainWindow()
     qtbot.addWidget(window)
     code = window.page("Kod Yükle")
-    window.menu.setCurrentRow(2)
+    window.nav.setCurrentRow(1)
     window.state.source = "def other(): pass"
-    window.menu.setCurrentRow(0)
+    window.nav.setCurrentRow(0)
     assert code.editor.toPlainText() == "def other(): pass"

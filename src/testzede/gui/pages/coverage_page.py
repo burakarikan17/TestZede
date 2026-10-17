@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt, QThread, Signal, Slot
+from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QBrush, QColor, QTextCursor, QTextFormat
 from PySide6.QtWidgets import (
     QAbstractItemView,
-    QApplication,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -27,7 +26,7 @@ from testzede.gui.pages import coverage_logic as logic
 from testzede.gui.pages.base import BasePage
 from testzede.gui.state import AppState
 from testzede.gui.styles import apply_monospace, fix_table_header
-from testzede.gui.workers import Worker, run_in_thread
+from testzede.gui.worker import TaskRunner, Worker
 from testzede.services.coverage_service import CoverageService
 
 if TYPE_CHECKING:
@@ -96,8 +95,8 @@ class CoveragePage(BasePage):
     ) -> None:
         super().__init__(PAGE_TITLE, state, parent)
         self._service = service if service is not None else CoverageService()
-        self._worker: Worker | None = None
-        self._thread: QThread | None = None
+        self._tasks = TaskRunner(self)
+        self._running = False
         self._pending: tuple[str, list[TestCase]] | None = None  # çalışan işin girdisi
         self._shown: ExecutionResult | None = None  # görünümde gösterilen sonuç
         self._result_source = ""  # sonucun hesaplandığı kaynak
@@ -154,9 +153,6 @@ class CoveragePage(BasePage):
         layout.addWidget(body, 1)
 
         self.run_button.clicked.connect(self.run)
-        app = QApplication.instance()
-        if app is not None:  # uygulama kapanırken çalışan iş parçacığı beklenir (çökmeyi önler)
-            app.aboutToQuit.connect(self._wait_for_worker)
         self._clear_view()
         self._refresh_run_state()
 
@@ -164,7 +160,7 @@ class CoveragePage(BasePage):
 
     def run(self) -> None:
         """Coverage'ı arka planda çalıştırır; girdi eksikse nedenini gösterir."""
-        if self._thread is not None:
+        if self._running or self._tasks.busy:
             return
         if self._input_problem():
             self._refresh_run_state()
@@ -172,22 +168,23 @@ class CoveragePage(BasePage):
         source, tests = self.state.source, list(self.state.tests)
         service = self._service
 
-        def job(progress_callback, should_cancel):
+        def job(worker: Worker) -> ExecutionResult:
             return service.run(source, tests)
 
+        self._running = True
         self._pending = (source, tests)
         self.run_button.setEnabled(False)
         self._set_status("Çalışıyor...", "info")
-        worker = Worker(job)
-        worker.finished.connect(self._on_finished)
-        worker.failed.connect(self._on_failed)
-        self._worker = worker
-        self._thread = run_in_thread(worker)
+        self._tasks.start(job, on_finished=self._on_finished, on_failed=self._on_failed)
+
+    def shutdown(self) -> None:
+        """Pencere kapanırken çalışan iş bitene kadar (üst sınırla) bekler."""
+        self._tasks.shutdown(timeout_ms=_WAIT_AT_EXIT_MS)
 
     @Slot(object)
     def _on_finished(self, result: object) -> None:
         """Başarılı sonucu ``AppState``'e yazar ve görünümü doldurur."""
-        self._join_thread()
+        self._running = False
         source, tests = self._pending or (self.state.source, list(self.state.tests))
         self._pending = None
         self.state.execution_result = result  # type: ignore[assignment]
@@ -202,24 +199,11 @@ class CoveragePage(BasePage):
     @Slot(str)
     def _on_failed(self, message: str) -> None:
         """Hatayı (ServiceError ya da beklenmeyen) kırmızı mesajla gösterir."""
-        self._join_thread()
+        self._running = False
         self._pending = None
         self._refresh_run_state()
         self._set_status(message, "error")
         self.run_completed.emit(False)
-
-    @Slot()
-    def _wait_for_worker(self) -> None:
-        """Uygulama kapanırken çalışan iş bitene kadar (üst sınırla) bekler."""
-        if self._thread is not None:
-            self._thread.wait(_WAIT_AT_EXIT_MS)
-
-    def _join_thread(self) -> None:
-        """Biten iş parçacığını bekler ve referanslarını bırakır."""
-        if self._thread is not None:
-            self._thread.wait(5000)
-        self._thread = None
-        self._worker = None
 
     # --- sayfa yaşam döngüsü -------------------------------------------------------------------
 
@@ -248,7 +232,7 @@ class CoveragePage(BasePage):
 
     def _refresh_run_state(self) -> None:
         """Çalışmıyorsa düğmeyi girdi durumuna göre açar/kapatır ve nedeni gösterir."""
-        if self._thread is not None:
+        if self._running:
             return
         problem = self._input_problem()
         self.run_button.setEnabled(not problem)

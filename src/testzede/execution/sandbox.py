@@ -20,6 +20,9 @@ TARGET_MODULE = "target"
 
 _MAX_REPR = 10_000
 
+# Generator fonksiyonlarının ilk kaç öğesi tüketilir (``rl.executor.GENERATOR_LIMIT`` ile aynı).
+GENERATOR_LIMIT = 50
+
 # Üst süreçteki coverage (örn. ``pytest --cov``) ayarları alt süreçlere sızmamalı: iç
 # ``coverage run`` üst sürecin veri dosyasına yazar ve verisini bozar.
 _COVERAGE_ENV_PREFIXES = ("COVERAGE_", "COV_CORE_")
@@ -37,9 +40,9 @@ def child_env() -> dict[str, str]:
 
 # Alt süreçte çalışır. Sonucu stdout yerine dosyaya yazar: hedef kod print edebilir.
 _RUNNER = """
-import ast, json, sys
+import ast, inspect, itertools, json, sys
 
-source_path, entry, args_repr, out_path, max_repr = sys.argv[1:6]
+source_path, entry, args_repr, out_path, max_repr, gen_limit = sys.argv[1:7]
 try:
     with open(source_path, encoding="utf-8") as f:
         code = compile(f.read(), "target", "exec")
@@ -51,6 +54,9 @@ except BaseException:
 else:
     try:
         value = fn(*ast.literal_eval(args_repr))
+        if inspect.isgeneratorfunction(fn):
+            # Gövde ancak tüketilince çalışır; sonsuz olabileceği için sınırlı tüketilir.
+            value = list(itertools.islice(value, int(gen_limit)))
     except BaseException as exc:
         out = {"status": "raised", "exc_type": type(exc).__name__}
     else:
@@ -77,6 +83,9 @@ class CallResult:
 
 def call_function(unit: CodeUnit, args_repr: str, *, timeout: float = 2.0) -> CallResult:
     """``unit.entry_point(*literal_eval(args_repr))`` çağrısını alt süreçte yapar.
+
+    Giriş bir generator fonksiyonuysa ilk ``GENERATOR_LIMIT`` öğesi listeye toplanır;
+    ``value_repr`` bu listenin ``repr``'idir.
 
     Hiçbir koşulda istisna fırlatmaz; timeout/çökme ``status`` ile döner.
     """
@@ -107,6 +116,7 @@ def call_function(unit: CodeUnit, args_repr: str, *, timeout: float = 2.0) -> Ca
                 args_repr,
                 str(out),
                 str(_MAX_REPR),
+                str(GENERATOR_LIMIT),
             ]
             try:
                 proc = subprocess.run(

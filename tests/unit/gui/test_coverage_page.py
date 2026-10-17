@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import threading
 
+import pytest
 from PySide6.QtCore import Qt
 from result_builders import make_result
 
 from testzede.domain.models import RunStats, TestCase
-from testzede.gui.app import create_main_window
+from testzede.gui.main_window import MainWindow
 from testzede.gui.pages.coverage_page import LINE_COLORS, OUTCOME_COLORS, CoveragePage
 from testzede.gui.state import AppState
 from testzede.services.coverage_service import CoverageService
@@ -50,14 +51,32 @@ class FakeService:
         return self.result
 
 
+_LIVE_PAGES: list[CoveragePage] = []
+
+
+@pytest.fixture(autouse=True)
+def _shutdown_pages():
+    """Sayfaları teardown'a kadar canlı tutar, sonra iş parçacıklarının bitmesini bekler.
+
+    pytest-qt widget'ları zayıf referansla tutar: test dönünce sayfa silinir ve iş parçacığı
+    henüz tam bitmemişse Qt süreci sonlandırır. Uygulamada bunu ``MainWindow`` kapanırken yapar.
+    """
+    yield
+    while _LIVE_PAGES:
+        _LIVE_PAGES.pop().shutdown()
+
+
 def _page(qtbot, service=None, source: str = SOURCE, tests=None) -> CoveragePage:
     state = AppState(source=source, tests=list(TESTS if tests is None else tests))
     page = CoveragePage(state, service=service)
     qtbot.addWidget(page)
+    _LIVE_PAGES.append(page)
     return page
 
 
 def _run_and_wait(qtbot, page: CoveragePage, timeout: int = 10000) -> bool:
+    # Önceki iş parçacığının temizliği (TaskRunner._cleanup) sonuç sinyalinden sonra gelir.
+    qtbot.waitUntil(lambda: not page._tasks.busy, timeout=5000)
     with qtbot.waitSignal(page.run_completed, timeout=timeout) as blocker:
         page.run_button.click()
     return blocker.args[0]
@@ -308,19 +327,29 @@ def test_on_enter_renders_result_set_by_another_component(qtbot):
     assert page.note_label.isHidden()  # güncel kabul edilir
 
 
-def test_wait_for_worker_is_a_noop_when_idle(qtbot):
+def test_shutdown_is_a_noop_when_idle(qtbot):
     page = _page(qtbot)
-    page._wait_for_worker()
+    page.shutdown()
+
+
+def test_shutdown_waits_for_running_job(qtbot):
+    gate = threading.Event()
+    page = _page(qtbot, FakeService(gate=gate))
+    page.run_button.click()
+    thread = page._tasks._thread
+    threading.Timer(0.2, gate.set).start()
+    page.shutdown()  # pencere kapanırken: iş bitene kadar bekler
+    assert thread.isFinished()
 
 
 # --- ana pencere ve gerçek uçtan uca -----------------------------------------------------------
 
 
 def test_main_window_registers_coverage_page(qtbot):
-    window = create_main_window()
+    window = MainWindow()
     qtbot.addWidget(window)
     assert isinstance(window.page("Coverage"), CoveragePage)
-    window.menu.setCurrentRow(2)
+    window.nav.setCurrentRow(1)
     assert window.stack.currentWidget() is window.page("Coverage")
 
 

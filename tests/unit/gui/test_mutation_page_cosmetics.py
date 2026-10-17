@@ -9,7 +9,7 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QHeaderView
 
 from testzede.domain.models import MutationReport, RunStats, TestCase
-from testzede.gui.app import apply_theme
+from testzede.gui.app import _apply_theme
 from testzede.gui.pages import mutation_logic as logic
 from testzede.gui.pages.coverage_page import CoveragePage
 from testzede.gui.pages.mutation_page import SELECTION_BG, SELECTION_FG, MutationPage
@@ -132,7 +132,7 @@ def test_selection_style_applies_only_to_the_survivor_table(qtbot):
 
 
 def test_selected_row_is_painted_dark_with_the_real_theme(qtbot, qapp):
-    assert apply_theme(qapp)
+    _apply_theme(qapp)
     try:
         page = _page_with_result(qtbot)
         page.resize(900, 500)
