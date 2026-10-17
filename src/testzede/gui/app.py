@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QApplication
 
 from testzede.gui.error_handler import handle_exception, install_global_handler
 from testzede.gui.main_window import MainWindow
+from testzede.gui.pages.code_page import PAGE_TITLE, CodePage
 from testzede.logging_setup import Logger
 
 THEME = "dark_teal.xml"
@@ -62,12 +63,19 @@ def install_thread_excepthook() -> None:
     threading.excepthook = hook
 
 
+def create_main_window() -> MainWindow:
+    """Ana pencereyi kurar ve hazır sayfaları kaydeder."""
+    window = MainWindow()
+    window.register_page(PAGE_TITLE, CodePage(window.state))
+    return window
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """GUI'yi başlatır ve çıkış kodunu döndürür."""
     app = QApplication.instance() or QApplication(list(argv if argv is not None else sys.argv))
     apply_theme(app)
     install_global_handler()
     install_thread_excepthook()
-    window = MainWindow()
+    window = create_main_window()
     window.show()
     return app.exec()
