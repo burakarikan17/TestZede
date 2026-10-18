@@ -9,7 +9,7 @@ gerçekten çizilen sonuca (font ölçüleri, ``grab`` pikselleri) bakar.
 from __future__ import annotations
 
 import pytest
-from PySide6.QtGui import QFontDatabase, QFontInfo, QImage, QTextCursor
+from PySide6.QtGui import QFontDatabase, QFontInfo, QFontMetricsF, QImage, QTextCursor
 from PySide6.QtWidgets import QPlainTextEdit, QTableWidget, QTableWidgetItem
 from result_builders import make_result
 
@@ -167,7 +167,10 @@ def test_diff_marker_and_code_columns_line_up_when_rendered(themed):
     assert cw == view.fontMetrics().horizontalAdvance("i")
     # `return` iki farklı işaretli satırda da 5. sütunda: aynı x; 4 girinti + 1 işaret sütunu.
     assert _char_x(view, removed, 5) == _char_x(view, added, 5)
-    assert _char_x(view, context, 9) - _char_x(view, removed, 5) == 4 * cw  # 8 girinti + işaret
+    # Glif genişliği kesirli olabilir (macOS'ta Menlo ~7.8 px); 4 sütunluk kayma yuvarlamayla 1 px oynar.
+    advance = QFontMetricsF(view.font()).horizontalAdvance("W")
+    shift = _char_x(view, context, 9) - _char_x(view, removed, 5)  # 8 girinti + işaret
+    assert abs(shift - 4 * advance) <= 1
 
     # Çizilen piksellerde de aynı: iki satırdaki "return" sözcüğünün glif maskesi özdeş.
     img = view.viewport().grab().toImage()
