@@ -173,7 +173,9 @@ parti isimlere dayananlar. Sınıf metotları kapsam dışıdır.
     çalıştırılmasıyla ölçülür. **Derlenebilirlik oranı**, RL'nin ürettiği tüm testler
     üzerindendir (seçilmeyenler dahil).
   - Mutasyon ve tahmin aşamaları `BatchConfig.mutation` / `BatchConfig.prediction`
-    üzerinden takılır. Verilmezse rapordaki sütunları boş kalır.
+    üzerinden takılır. Verilmezse rapordaki sütunları boş kalır. Yapılandırmada
+    `batch.mutation: true` ise `runner.mutation_stage()` mutasyon motorunu takar. Testlerin
+    hiç çalıştırmadığı satırlardaki mutantlar koşturulmaz, hayatta kalan sayılır.
   - Bir aşama hata verirse hata `UnitResult.error`'a yazılır, önceki aşamaların sonuçları
     korunur, çalıştırma bir sonraki birimle sürer. `progress` ve `should_stop` geri
     çağrıları GUI'deki ilerleme çubuğu ve "Durdur" düğmesi içindir.

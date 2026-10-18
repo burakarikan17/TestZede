@@ -19,3 +19,4 @@ batch:
   seed: 0              # i. birim seed + i kullanır (tekrarlanabilirlik)
   share_agent: true    # Q-tablosu birimler arasında paylaşılır
   suite_timeout_s: 60  # seçilen test paketinin son çalıştırması
+  mutation: true       # mutasyon skoru (US-5); kapsanmayan satırdaki mutantlar hayatta kalır
