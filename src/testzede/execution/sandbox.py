@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -21,6 +22,21 @@ _MAX_REPR = 10_000
 
 # Generator fonksiyonlarının ilk kaç öğesi tüketilir (``rl.executor.GENERATOR_LIMIT`` ile aynı).
 GENERATOR_LIMIT = 50
+
+# Üst süreçteki coverage (örn. ``pytest --cov``) ayarları alt süreçlere sızmamalı: iç
+# ``coverage run`` üst sürecin veri dosyasına yazar ve verisini bozar.
+_COVERAGE_ENV_PREFIXES = ("COVERAGE_", "COV_CORE_")
+
+
+def child_env() -> dict[str, str]:
+    """Alt süreçler için ortam: ``os.environ``'ın ``COVERAGE_*``/``COV_CORE_*`` hariç kopyası."""
+    # Windows'ta ortam değişkeni adları büyük/küçük harfe duyarsızdır: karşılaştırma büyük harfle.
+    return {
+        key: value
+        for key, value in os.environ.items()
+        if not key.upper().startswith(_COVERAGE_ENV_PREFIXES)
+    }
+
 
 # Alt süreçte çalışır. Sonucu stdout yerine dosyaya yazar: hedef kod print edebilir.
 _RUNNER = """
@@ -107,6 +123,7 @@ def call_function(unit: CodeUnit, args_repr: str, *, timeout: float = 2.0) -> Ca
                     cmd,
                     check=False,
                     cwd=tmp,
+                    env=child_env(),
                     timeout=timeout,
                     stdin=subprocess.DEVNULL,
                     stdout=subprocess.DEVNULL,

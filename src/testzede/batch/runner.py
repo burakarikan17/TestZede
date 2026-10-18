@@ -29,6 +29,7 @@ from testzede.domain.models import (
     RunStats,
     TestCase,
 )
+from testzede.mutation.engine import MutationEngine
 from testzede.rl.agent import QLearningAgent
 from testzede.rl.executor import Executor
 from testzede.rl.signature import SignatureError
@@ -40,6 +41,20 @@ Progress = Callable[[int, int, UnitResult], None]  # (biten, toplam, son sonuç)
 StopFlag = Callable[[], bool]
 
 
+def mutation_stage(engine: MutationEngine | None = None) -> MutationStage:
+    """Mutasyon motorunu ``BatchConfig.mutation`` aşamasına sarar (US-5).
+
+    Testlerin hiç çalıştırmadığı satırlardaki mutantlar koşturulmadan hayatta kalan
+    sayılır ve skoru düşürür. Motor hatası (``MutationError``) ``run_unit``'te yakalanır.
+    """
+    engine = engine or MutationEngine()
+
+    def stage(unit: CodeUnit, tests: Sequence[TestCase]) -> MutationReport:
+        return engine.run_detailed(unit.source, list(tests)).report
+
+    return stage
+
+
 @dataclass(frozen=True)
 class BatchConfig:
     """Toplu çalıştırma ayarları.
@@ -48,6 +63,8 @@ class BatchConfig:
         seed: Tekrarlanabilirlik için temel tohum; ``i``. birim ``seed + i`` kullanır.
         share_agent: Q-tablosu birimler arasında paylaşılsın mı.
         suite_timeout_s: Üretilen test paketinin son (tam) çalıştırması için süre sınırı.
+        mutation: Mutasyon aşaması; yapılandırmada ``batch.mutation: true`` ise
+            :func:`mutation_stage` kullanılır.
     """
 
     rl: RLConfig = field(default_factory=RLConfig)
@@ -66,6 +83,7 @@ class BatchConfig:
             "seed": None if seed is None else int(seed),
             "share_agent": bool(section.pop("share_agent", True)),
             "suite_timeout_s": float(section.pop("suite_timeout_s", 60.0)),
+            "mutation": mutation_stage() if bool(section.pop("mutation", False)) else None,
         }
         if section:
             raise ValueError(f"Bilinmeyen batch ayarı: {', '.join(sorted(section))}")
