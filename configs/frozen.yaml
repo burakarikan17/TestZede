@@ -12,6 +12,10 @@
 #   ε_cost 0.02 + γ 1.0        1.61      %71.8   %45.6   %43
 #   patience 20 + episodes 3   1.63      %74.3   %49.4   %51   <- seçilen
 # Bedeli: birim başına süre ~5 kat (development: ~7 dk -> ~35 dk).
+#
+# Mutasyon (US-5) yalnızca ölçüm aşamasıdır, RL ayarını ve üretilen testleri değiştirmez.
+# development ilk 20 birim: mutasyonsuz 167 sn, mutasyonlu 175 sn (~%5); test sayısı ve
+# coverage birebir aynı, ortalama mutation score %64.6.
 reward:
   alpha: 1.0    # Δline
   beta: 2.0     # Δbranch
@@ -32,3 +36,4 @@ batch:
   seed: 0
   share_agent: true
   suite_timeout_s: 60
+  mutation: true       # mutasyon skoru (US-5); kapsanmayan satırdaki mutantlar hayatta kalır
