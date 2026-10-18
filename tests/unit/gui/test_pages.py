@@ -154,10 +154,13 @@ def test_main_window_hosts_pages(qtbot, monkeypatch):
     window = MainWindow()
     qtbot.addWidget(window)
     assert [window.nav.item(i).text() for i in range(window.nav.count())] == [
+        "Kod Yükle",
+        "Coverage",
         "RL Test Üretimi",
+        "Mutasyon",
         "Toplu Test",
     ]
-    window.nav.setCurrentRow(1)
+    window.nav.setCurrentRow(4)
     assert window.stack.currentWidget() is window.page("Toplu Test")
     window.close()
 

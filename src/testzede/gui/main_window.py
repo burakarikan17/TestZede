@@ -21,14 +21,17 @@ from PySide6.QtWidgets import (
 
 from testzede.gui.pages.base import BasePage
 from testzede.gui.pages.batch_page import BatchPage
+from testzede.gui.pages.code_page import CodePage
+from testzede.gui.pages.coverage_page import CoveragePage
+from testzede.gui.pages.mutation_page import MutationPage
 from testzede.gui.pages.rl_page import RLPage
 from testzede.gui.state import AppState
 
 PageFactory = Callable[[AppState], BasePage]
 
-# Diğer sayfalar (Kod Yükle, Çağrı Grafiği, Metrikler, Coverage, Mutasyon, Tahmin)
-# sahipleri tarafından ARCHITECTURE.md §6'daki sırayla buraya eklenir.
-PAGES: tuple[PageFactory, ...] = (RLPage, BatchPage)
+# Diğer sayfalar (Çağrı Grafiği, Metrikler, Tahmin) sahipleri tarafından
+# ARCHITECTURE.md §6'daki sırayla buraya eklenir.
+PAGES: tuple[PageFactory, ...] = (CodePage, CoveragePage, RLPage, MutationPage, BatchPage)
 
 
 class MainWindow(QMainWindow):

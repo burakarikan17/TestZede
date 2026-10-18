@@ -76,3 +76,10 @@ class MutationService:
             return engine.run_detailed(source, tests, progress_callback, should_cancel)
         except MutationError as exc:
             raise ServiceError(str(exc)) from exc
+
+
+def create_mutation_service(max_mutants: int = 100) -> MutationService:
+    """Gerçek mutasyon motoruyla (en fazla ``max_mutants`` mutant) bir ``MutationService`` kurar."""
+    from testzede.mutation.engine import MutationEngine as CoreMutationEngine
+
+    return MutationService(CoreMutationEngine(max_mutants=max_mutants))

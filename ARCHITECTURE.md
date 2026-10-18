@@ -246,4 +246,5 @@ Uzun işlemlerin tamamı `QThread` içinde çalışır; GUI iş parçacığı as
   coverage ve mutasyon sonucu). Tek örnek `MainWindow` tarafından oluşturulur.
 - `gui/worker.py`: `TaskRunner` işi `QThread`'de çalıştırır; sonuç, ilerleme ve hata
   sinyalle gelir. `ServiceError` mesajı olduğu gibi gösterilir.
-- Sayfalar yalnızca `services/` cephelerini kullanır (`rl_service`, `batch_service`).
+- Sayfalar yalnızca `services/` cephelerini kullanır (`rl_service`, `batch_service`,
+  `coverage_service`, `mutation_service`).
