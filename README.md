@@ -109,7 +109,7 @@ src/testzede/
   services/     uygulama katmanı (GUI ile çekirdek arasındaki cephe)
   gui/          PySide6 arayüzü
 tests/          unit ve entegrasyon testleri
-docs/           şartname, STD, kalite raporları, diyagramlar
+docs/           sözleşme (TestZede-Sozlesme.docx), STD (TestZede-STD.docx), kalite analizi rehberi
 ```
 
 Ayrıntılı mimari için: [ARCHITECTURE.md](ARCHITECTURE.md) · Katkı kuralları: [CONTRIBUTING.md](CONTRIBUTING.md)
