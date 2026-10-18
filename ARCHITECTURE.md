@@ -122,6 +122,8 @@ Her **epizot** bir `CodeUnit` (test edilen fonksiyon) üzerinde geçer.
 | Bitiş | %100 branch coverage, maksimum adım ya da N adım boyunca coverage artışı olmaması |
 | Oracle | Girdi, referans (canonical) çözümde çalıştırılır; çıktı `assert` olarak yazılır (regresyon oracle'ı). İstisna fırlatan girdiler `pytest.raises` testine dönüşür. |
 | Ajan | Temel: tabular Q-learning (ε-greedy). Opsiyonel karşılaştırma: gymnasium uyumlu ortam üzerinde stable-baselines3 PPO. |
+| Kullanıcı testleri (US-3 artırım) | Kullanıcı kendi test dosyasını verirse ortam her epizoda bu testlerin coverage'ıyla başlar; RL yalnızca kapsanmayan satır/dallar için test ekler. Test dosyasındaki kaynak modülü import'ları `target`'a çevrilir. Kullanıcı testleri zaten tam kapsıyorsa test üretilmez. Sonuç "kullanıcı testleri" ve "kullanıcı testleri + RL" coverage'ı olarak iki değer verir. |
+| Generator fonksiyonları | Oracle ve üretilen testler ilk `GENERATOR_LIMIT` (50) öğeyi `list(islice(f(...), 50))` ile tüketir; aksi halde gövde hiç çalışmaz. |
 
 Çıktı: `TestCase` listesi + epizot boyunca coverage eğrisi. Coverage eğrisi
 opsiyonel tahmin modülünde optimum test sayısının hedef değeri olarak kullanılır.
@@ -141,10 +143,44 @@ Her mutant sandbox'ta test paketine karşı koşturulur.
 
 ### datasets + batch (US-6)
 - **Factory** kalıbı: `DatasetFactory.get("humaneval")` → `DatasetLoader` →
-  `Iterable[CodeUnit]`.
+  `Iterable[CodeUnit]`. Her yükleyici `load()` ile bir `LoadResult` döndürür: birimler
+  (`units`), atlanan örnekler (`skipped`, neden koduyla) ve sayaçlar (`stats`). Hiçbir
+  örnek sessizce kaybolmaz.
+- **Ham veri:** `data/raw/<veri_seti>/` altında. `download` dosyaları sabit bir Hugging
+  Face revizyonundan indirir ve SHA-256 ile doğrular (yalnızca standart kütüphane).
+
+| Veri seti | Birim | `uid` |
+|---|---|---|
+| HumanEval | Görev: `prompt + canonical_solution` (referans çözüm, oracle için) | `HumanEval/12` |
+| 67_Python_Code_Small | Excel satırı: tek fonksiyon | `small67/<satır>` |
+| TestGenEval, TestGenEvalLite | **Fonksiyon**: repo dosyasından çıkarılan, tek başına çalışan fonksiyon | `<instance_id>::<dosya>::<fonksiyon>` |
+
+`CodeUnit.seed_examples`, entry-point fonksiyonunun docstring'indeki `>>>` çağrılarıdır.
+
+**Fonksiyon çıkarma (`datasets/extraction.py`).** TestGenEval dosyalarının tamamı tek
+başına çalışmaz (dosya düzeyinde yalnızca %1'i standart kütüphaneye dayanır). Bu yüzden
+her dosyadan bağımsız fonksiyonlar, ihtiyaç duydukları import, değiştirilemez sabit ve
+yardımcı fonksiyonlarla birlikte çıkarılır. Serbest isimler `symtable` ile bulunur.
+Reddedilenler neden koduyla sayılır: özel / dekoratörlü / `async` / parametresiz
+fonksiyonlar, `global` kullananlar, dosya sistemi-ağ-süreç-rastgelelik gibi yan etkili
+modüllere ya da `open`/`input` gibi yerleşiklere dayananlar ve repo içi ya da üçüncü
+parti isimlere dayananlar. Sınıf metotları kapsam dışıdır.
 - `batch/runner.py`: her `CodeUnit` için metrik → RL → coverage → mutasyon → tahmin
   hattını çalıştırır. Sonuçları veri seti bazında `reports/` altına CSV/HTML/XLSX
   olarak yazar.
+  - RL, `execution/executor.py`'deki `SandboxExecutor` ile çalışır (sandbox + coverage_runner).
+  - Coverage ve **test çalıştırma süresi**, RL'nin seçtiği test paketinin bir kez baştan
+    çalıştırılmasıyla ölçülür. **Derlenebilirlik oranı**, RL'nin ürettiği tüm testler
+    üzerindendir (seçilmeyenler dahil).
+  - Mutasyon ve tahmin aşamaları `BatchConfig.mutation` / `BatchConfig.prediction`
+    üzerinden takılır. Verilmezse rapordaki sütunları boş kalır. Yapılandırmada
+    `batch.mutation: true` ise `runner.mutation_stage()` mutasyon motorunu takar. Testlerin
+    hiç çalıştırmadığı satırlardaki mutantlar koşturulmaz, hayatta kalan sayılır.
+  - Bir aşama hata verirse hata `UnitResult.error`'a yazılır, önceki aşamaların sonuçları
+    korunur, çalıştırma bir sonraki birimle sürer. `progress` ve `should_stop` geri
+    çağrıları GUI'deki ilerleme çubuğu ve "Durdur" düğmesi içindir.
+  - Q-tablosu birimler arasında paylaşılır (`batch.share_agent`). `i`. birim `seed + i`
+    tohumunu kullanır, böylece aynı yapılandırma aynı sonucu verir.
 
 ## 4. Data leakage'sız veri ayrımı
 
@@ -154,12 +190,23 @@ Her mutant sandbox'ta test paketine karşı koşturulur.
 | Ana deney | TestGenEval **eksi** TestGenEvalLite örnekleri | Coverage, mutation score, süre |
 | Bağımsız dış test | HumanEval + 67_Python_Code_Small | Genellenebilirlik |
 
-Kurallar:
-1. Lite, TestGenEval'in alt kümesidir (data leakage'ı önlemek için ekibin yorumu). Ana deney setinden Lite örnekleri
-   `make-splits` ile çıkarılır; örnek kimlikleri `data/splits/*.json` dosyasına yazılır.
-2. Ayar dondurulduktan (`configs/frozen.yaml`) sonra ana ve dış test setlerinde
+Splitler `testzede make-splits` ile `data/splits/{development,main,external}.json`
+olarak üretilir. Kurallar:
+1. Lite, TestGenEval'in alt kümesidir. Ana deney setinden Lite örnekleri **`instance_id`**
+   ile çıkarılır (iki veri setinin `id` sütunları farklıdır, yalnızca `instance_id` ortaktır;
+   `id` ile çıkarma hiçbir şeyi çıkarmaz ve sızıntı sessizce kalır). Bu ayrım ekibin
+   yorumudur ve data leakage'ı önlemek içindir.
+2. Aynı fonksiyon farklı commit'lerde tekrar eder. Ana deneyden, geliştirme kümesindekiyle
+   **birebir aynı kaynaklı** birimler de çıkarılır ve her küme kendi içinde tekilleştirilir.
+   Lite ile ortak *dosyalar* (aynı dosya, farklı örnek) varsayılan olarak çıkarılmaz ama
+   sayısı split içinde (`stats.leakage`) raporlanır; `--strict-files` bunları da çıkarır.
+3. Her split dosyası kullandığı ham dosyaların SHA-256 özetini taşır; veri değişirse
+   `load_split_units` hata verir. Split dosyaları zaman damgası içermez: aynı veriden
+   her zaman aynı baytlar çıkar. Her rapor, kullanılan split dosyasının hash değerini içerir.
+4. `make-splits`, development ve main arasında ortak `instance_id` ya da `uid` bulursa
+   `SplitError` ile durur (`verify_no_leakage`).
+5. Ayar dondurulduktan (`configs/frozen.yaml`) sonra ana ve dış test setlerinde
    parametre **değiştirilmez**.
-3. Her rapor, kullanılan split dosyasının hash değerini içerir.
 
 ## 5. Tasarım kalıpları
 
@@ -188,3 +235,16 @@ PySide6 + qt-material (Material Design teması). Sayfalar ve sahipleri:
 | Tahmin | Tahmini hata ve optimum test sayısı | Burak |
 
 Uzun işlemlerin tamamı `QThread` içinde çalışır; GUI iş parçacığı asla bloklanmaz.
+
+- Giriş: `testzede gui` → `gui/app.py` (qt-material teması, global `sys.excepthook`).
+- `gui/main_window.py`: soldaki listeden sayfa seçilir. Yeni sayfa `PAGES` demetine yukarıdaki
+  sırayla eklenir; `PAGES` öğesi `AppState` alıp sayfa döndüren bir fabrikadır (sayfa sınıfının
+  kendisi olabilir). Sayfa seçilince `on_enter()` çağrılır; arka planda iş çalıştıran sayfa
+  `shutdown()` tanımlar (pencere kapanırken çağrılır).
+- `gui/pages/base.py`: `BasePage(title, state)` tüm sayfaların tabanı; `title` ve boş `on_enter()`.
+- `gui/state.py`: `AppState` sayfalar arasında paylaşılan durum (yüklenen kod, testler, son
+  coverage ve mutasyon sonucu). Tek örnek `MainWindow` tarafından oluşturulur.
+- `gui/worker.py`: `TaskRunner` işi `QThread`'de çalıştırır; sonuç, ilerleme ve hata
+  sinyalle gelir. `ServiceError` mesajı olduğu gibi gösterilir.
+- Sayfalar yalnızca `services/` cephelerini kullanır (`rl_service`, `batch_service`,
+  `coverage_service`, `mutation_service`).

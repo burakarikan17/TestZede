@@ -61,20 +61,38 @@ Veri setleri repoya **commit edilmez**, `data/raw/` altına indirilir:
 ```bash
 testzede download --dataset humaneval
 testzede download --dataset testgeneval-lite
-testzede download --dataset testgeneval      # büyük, Docker gerektirir
-# 67_Python_Code_Small_DataSet: ders sorumlusundan alınıp data/raw/small67/ altına koyulur
+testzede download --dataset testgeneval      # ~58 MB, Docker gerekmez
+testzede download --dataset all              # üçünü birden
+# 67_Python_Code_Small_DataSet: ders sorumlusundan alınan .xlsx dosyası data/raw/small67/ altına koyulur
 testzede make-splits                          # data leakage'sız ayrımı üretir
 ```
+
+İndirilen dosyalar sabit bir revizyona ve SHA-256 özetine bağlıdır; bozuk ya da
+değişmiş dosya reddedilir. `make-splits`, `data/splits/` altına üç dosya yazar:
+`development` (TestGenEvalLite), `main` (TestGenEval eksi Lite) ve `external`
+(HumanEval + Small67). Seçenekler: `--strict-files` (ana deneyden Lite ile ortak
+dosyaları da çıkarır), `--allow-missing` (eksik veri setlerini uyarıyla atlar).
+
+TestGenEval örnekleri gerçek repo dosyalarıdır; bu yüzden birim **fonksiyon düzeyindedir**
+ve yalnızca standart kütüphaneye dayanan, tek başına çalışabilen fonksiyonlar alınır
+(ayrıntı: [ARCHITECTURE.md](ARCHITECTURE.md) §3 ve §4).
 
 ## Çalıştırma
 
 ```bash
-testzede gui                                          # masaüstü arayüz
-testzede batch --dataset humaneval --split external   # toplu test
-testzede batch --all --report html                    # tüm setler, HTML rapor
+testzede gui                                         # masaüstü arayüz
+testzede batch --split external                      # dış test seti (HumanEval + Small67)
+testzede batch --split main --only testgeneval       # splitin bir veri seti
+testzede batch --dataset small67 --limit 5           # split olmadan, ilk 5 birim (deneme)
+testzede batch --split external --formats html xlsx  # yalnızca bu biçimler
 ```
 
-Raporlar `reports/<tarih>/<veri_seti>/` altına yazılır.
+Raporlar `reports/<tarih>/<veri_seti>/` altına yazılır (`results`, `summary`, `meta`
+CSV'leri, `report.xlsx`, `report.html`). Her rapor kullanılan split dosyasının SHA-256
+özetini ve yapılandırma dosyasının adını taşır. Yapılandırma varsayılan olarak
+`configs/frozen.yaml`'dan, o yoksa `configs/default.yaml`'dan okunur (`--config` ile
+değiştirilebilir). `frozen.yaml` development split'inde yapılan ayar taramasının sonucudur
+(tablo dosyanın başında); ana deney ve dış test setlerinde değiştirilmez. Bir birimde hata olursa çalıştırma durmaz; hata `error` sütununa yazılır.
 
 ## Proje yapısı
 
