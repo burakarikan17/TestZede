@@ -28,6 +28,19 @@ def downloadable_datasets() -> tuple[str, ...]:
     return tuple(SOURCES)
 
 
+def is_downloaded(name: str, data_dir: Path = DEFAULT_DATA_DIR) -> bool:
+    """Veri setinin tüm dosyaları yerelde var ve SHA-256 özetleri doğru mu?
+
+    Raises:
+        DatasetError: Veri seti adı bilinmiyorsa.
+    """
+    if name not in SOURCES:
+        available = ", ".join(SOURCES)
+        raise DatasetError(f"İndirilebilir veri seti değil: '{name}'. Seçenekler: {available}")
+    target_dir = raw_dir(data_dir, name)
+    return all(_is_valid(target_dir / r.local_name, r.sha256) for r in SOURCES[name])
+
+
 def download_dataset(
     name: str,
     data_dir: Path = DEFAULT_DATA_DIR,

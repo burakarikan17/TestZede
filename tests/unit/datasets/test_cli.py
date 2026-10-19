@@ -30,6 +30,18 @@ def test_download_single_dataset(monkeypatch, tmp_path, capsys):
     assert "humaneval: hazır" in capsys.readouterr().out
 
 
+def test_download_skips_verified_dataset(monkeypatch, tmp_path, capsys):
+    def fail(*_args, **_kwargs):
+        raise AssertionError("doğrulanmış veri seti yeniden indirilmemeli")
+
+    monkeypatch.setattr(cli, "is_downloaded", lambda name, data_dir: True)
+    monkeypatch.setattr(cli, "download_dataset", fail)
+    assert cli.main(["download", "--dataset", "humaneval", "--data-dir", str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+    assert "humaneval: zaten indirilmiş" in out
+    assert "indiriliyor" not in out
+
+
 def test_progress_printer_is_throttled(capsys):
     show = cli._progress_printer()
     for received in range(0, 101, 1):
