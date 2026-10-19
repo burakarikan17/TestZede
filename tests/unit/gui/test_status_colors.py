@@ -15,7 +15,10 @@ from result_builders import make_result
 from testzede.domain.models import MutationReport, RunStats, TestCase
 from testzede.gui import styles
 from testzede.gui.app import _apply_theme
-from testzede.gui.main_window import MainWindow
+from testzede.gui.main_window import PAGES, MainWindow
+from testzede.gui.pages.code_page import CodePage
+from testzede.gui.pages.coverage_page import CoveragePage
+from testzede.gui.pages.mutation_page import MutationPage
 from testzede.mutation.engine import MutationRun
 from testzede.mutation.operators import generate_all
 
@@ -24,7 +27,8 @@ TESTS = [
     TestCase(name, f"def {name}(): pass", "user") for name in ("t_ok", "t_bad", "t_slow", "t_err")
 ]
 MIN_CONTRAST = 4.5
-CODE, COVERAGE, MUTATION = 0, 1, 3  # MainWindow.nav satırları
+# MainWindow.nav satırları (sayfa sırası değişse de doğru kalsın diye sınıftan bulunur)
+CODE, COVERAGE, MUTATION = (PAGES.index(c) for c in (CodePage, CoveragePage, MutationPage))
 
 
 def _luminance(color: QColor) -> float:

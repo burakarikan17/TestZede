@@ -477,7 +477,7 @@ def test_main_window_registers_mutation_page(qtbot):
     window = MainWindow()
     qtbot.addWidget(window)
     assert isinstance(window.page("Mutasyon"), MutationPage)
-    window.nav.setCurrentRow(3)
+    window.nav.setCurrentRow(window.pages.index(window.page("Mutasyon")))
     assert window.stack.currentWidget() is window.page("Mutasyon")
 
 

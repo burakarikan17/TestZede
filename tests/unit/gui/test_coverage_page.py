@@ -349,7 +349,7 @@ def test_main_window_registers_coverage_page(qtbot):
     window = MainWindow()
     qtbot.addWidget(window)
     assert isinstance(window.page("Coverage"), CoveragePage)
-    window.nav.setCurrentRow(1)
+    window.nav.setCurrentRow(window.pages.index(window.page("Coverage")))
     assert window.stack.currentWidget() is window.page("Coverage")
 
 
