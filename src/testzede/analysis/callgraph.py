@@ -11,6 +11,8 @@ import builtins
 
 import networkx as nx
 
+from testzede.analysis.parsing import SourceError, parse_python
+
 MODULE_NODE = "<module>"
 BUILTIN_PREFIX = "<builtin>."
 EXTERNAL_PREFIX = "<external>."
@@ -36,12 +38,12 @@ def build_call_graph(source: str) -> nx.DiGraph:
     kendi üzerine kenar olarak görünür.
 
     Raises:
-        CallGraphError: Kaynak geçerli Python söz dizimi değilse.
+        CallGraphError: Kaynak ayrıştırılamıyorsa (söz dizimi hatası, null bayt vb.).
     """
     try:
-        tree = ast.parse(source)
-    except SyntaxError as exc:
-        raise CallGraphError(f"Kod ayrıştırılamadı (satır {exc.lineno}): {exc.msg}") from exc
+        tree = parse_python(source)
+    except SourceError as exc:
+        raise CallGraphError(str(exc)) from exc
 
     definitions = _DefinitionCollector()
     definitions.visit(tree)

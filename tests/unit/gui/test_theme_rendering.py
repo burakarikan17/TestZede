@@ -16,7 +16,9 @@ from result_builders import make_result
 from testzede.domain.models import MutationReport, RunStats, TestCase
 from testzede.gui import styles
 from testzede.gui.app import _apply_theme
-from testzede.gui.main_window import MainWindow
+from testzede.gui.main_window import PAGES, MainWindow
+from testzede.gui.pages.coverage_page import CoveragePage
+from testzede.gui.pages.mutation_page import MutationPage
 from testzede.mutation.engine import MutationRun
 from testzede.mutation.operators import generate_all
 
@@ -45,7 +47,8 @@ def themed(qtbot, qapp) -> MainWindow:
     window.resize(1200, 700)
     window.show()
     qtbot.waitExposed(window)
-    for row in (1, 3):  # Coverage, Mutasyon: on_enter sonuçları çizer
+    for page in (CoveragePage, MutationPage):  # on_enter sonuçları çizer
+        row = PAGES.index(page)
         window.nav.setCurrentRow(row)
         qtbot.wait(20)
     yield window

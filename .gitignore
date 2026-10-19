@@ -5,6 +5,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .coverage
+coverage.xml
 htmlcov/
 build/
 dist/
@@ -23,3 +24,6 @@ dataset/
 .idea/
 .vscode/
 .DS_Store
+
+# Hocanın şablonları ve notlandırma belgesi (yerel, depoya eklenmez)
+sozlesme/

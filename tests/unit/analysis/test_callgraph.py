@@ -50,3 +50,18 @@ def test_functions_without_calls_still_appear_as_nodes():
 def test_invalid_syntax_raises_callgraph_error():
     with pytest.raises(CallGraphError):
         build_call_graph("def broken(:\n")
+
+
+def test_null_bytes_are_a_callgraph_error_not_a_raw_value_error():
+    with pytest.raises(CallGraphError, match="null"):
+        build_call_graph("f()\x00")
+
+
+def test_syntax_error_message_has_the_line_number():
+    with pytest.raises(CallGraphError, match=r"satır 2"):
+        build_call_graph("x = 1\ndef broken(:\n")
+
+
+def test_invalid_escape_sequences_do_not_emit_warnings(recwarn):
+    build_call_graph('def f(x):\n    return "\\d" + x\n')
+    assert not [w for w in recwarn if issubclass(w.category, (SyntaxWarning, DeprecationWarning))]

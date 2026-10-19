@@ -98,7 +98,12 @@ class Prediction:
 - `metrics.py`: radon `raw`, `metrics.h_visit`, `complexity.cc_visit`, `metrics.mi_visit`
   ile 14 metrik üretir: LOC, LLOC, SLOC, Yorum, Çoklu satır, Boş, Halstead
   Zorluk/Çaba/Uzunluk/Zaman/Kelime Haznesi/Hacim, Çevrimsel Karmaşıklık,
-  Sürdürülebilirlik İndeksi.
+  Sürdürülebilirlik İndeksi. `METRIC_DESCRIPTIONS` her metriğin kısa açıklamasını,
+  `maintainability_rank` indeksin A/B/C derecesini verir (radon eşikleri).
+- `parsing.py`: iki modülün ortak ayrıştırıcısı. Söz dizimi hatası, null bayt, aşırı iç içe
+  yapı ve bellek hataları `SourceError`'a çevrilir (satır numarası biliniyorsa mesajda
+  yazar); kullanıcı kodundaki geçersiz kaçış dizisi uyarıları bastırılır. Hatalı kod hiçbir
+  zaman ham `ValueError` olarak sızmaz.
 
 ### execution (US-3, US-5'in süre ve derlenebilirlik kısmı)
 - `sandbox.py`: Her çalıştırma ayrı bir **alt süreçte** (`subprocess.run`, `timeout=`)
@@ -226,8 +231,8 @@ PySide6 + qt-material (Material Design teması). Sayfalar ve sahipleri:
 | Sayfa | İçerik | Sahibi |
 |---|---|---|
 | Kod Yükle | Kaynak kod ve test kodu seçimi | Emre |
-| Çağrı Grafiği | US-1 grafiği | Burak |
-| Metrikler | US-2 tablosu | Burak |
+| Çağrı Grafiği | US-1 grafiği (matplotlib), düğüm tablosu ve ayrıntı | Burak |
+| Metrikler | US-2: 14 metrik, açıklama, sürdürülebilirlik derecesi, CSV dışa aktarma | Burak |
 | Coverage | Emma benzeri ağaç görünümü (eleman / coverage / kapsanan / kaçan / toplam) | Emre |
 | RL Test Üretimi | Üretilen testler + alt şerit: Test Case Statistics, Branch Count, Tested Line Count, Coverage Rate | Enes |
 | Mutasyon | Mutation score, süre, derlenebilirlik oranı | Emre |
@@ -247,4 +252,24 @@ Uzun işlemlerin tamamı `QThread` içinde çalışır; GUI iş parçacığı as
 - `gui/worker.py`: `TaskRunner` işi `QThread`'de çalıştırır; sonuç, ilerleme ve hata
   sinyalle gelir. `ServiceError` mesajı olduğu gibi gösterilir.
 - Sayfalar yalnızca `services/` cephelerini kullanır (`rl_service`, `batch_service`,
-  `coverage_service`, `mutation_service`).
+  `coverage_service`, `mutation_service`, `analysis_service`).
+
+### Çağrı Grafiği ve Metrikler sayfaları (US-1, US-2)
+
+- **Kaynak seçici** (`gui/pages/analysis_common.py`, `SourcePicker`): analiz edilecek kod
+  "Kod Yükle" sayfasındaki kod ya da bir HumanEval görevidir (şartname: "HumanEval veri
+  setinden alınan bir kod"). HumanEval listesi ilk seçimde arka planda yüklenir; veri
+  indirilmemişse seçenek kapalıdır ve ipucu `testzede download --dataset humaneval`
+  komutunu söyler. Sayfalar `AppState`'i yalnızca okur, değiştirmez.
+- **`AnalysisPage`** ortak tabandır: hesabı `TaskRunner` ile arka planda çalıştırır, hatayı
+  durum etiketinde gösterir, kaynak değişince "sonuç eski olabilir" notunu düşer. Alt
+  sayfalar yalnızca `_compute` ve `_render` tanımlar.
+- **`services/analysis_service.py`** `ast`/`networkx`/`radon` türlerini GUI'ye sızdırmaz:
+  `CallGraphView` (yerleşimi hesaplanmış düğümler ve kenarlar) ve `MetricsView` döner.
+  Yerleşim katmanlıdır (çağıranlar üstte, döngüler tek katman, çağıranların ortalama
+  konumuna göre sıralama) ve tekrarlanabilirdir; rastgelelik yoktur.
+- **Çizim** (`gui/pages/graph_canvas.py`): düğüm türleri renk ve şekille ayrılır
+  (Okabe-Ito paleti: fonksiyon, yerleşik, harici, modül), özyineleme halka okla gösterilir,
+  açık ve koyu temaya uyar. Tabloda ya da grafikte düğüm seçilince onunla ilgili düğüm ve
+  çağrılar vurgulanır, diğerleri sönükleşir. Yakınlaştırma, kaydırma ve PNG kaydetme
+  matplotlib araç çubuğundadır.
