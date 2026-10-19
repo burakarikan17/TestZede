@@ -92,7 +92,8 @@ def test_layout_orders_children_under_their_parents():
 
 
 def test_layout_is_deterministic():
-    assert view(MIXED) == view(MIXED)
+    first, second = view(MIXED), view(MIXED)
+    assert first == second
 
 
 def test_unknown_node_raises_key_error():

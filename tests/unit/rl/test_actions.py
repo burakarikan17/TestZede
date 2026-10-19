@@ -54,7 +54,9 @@ def test_generated_floats_are_finite(name):
 
 def test_generation_is_deterministic_for_same_seed():
     action = ACTION_REGISTRY["RANDOM_SMALL"]
-    assert action.generate(CTX, random.Random(7)) == action.generate(CTX, random.Random(7))
+    first = action.generate(CTX, random.Random(7))
+    second = action.generate(CTX, random.Random(7))
+    assert first == second
 
 
 def test_empty_produces_empty_values():
