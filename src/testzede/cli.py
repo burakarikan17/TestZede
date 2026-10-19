@@ -20,7 +20,7 @@ from testzede.batch.report import FORMATS, UnitResult
 from testzede.batch.runner import BatchConfig, run_dataset, run_split
 from testzede.config import ConfigError, default_config_path, load_config
 from testzede.datasets.base import DEFAULT_DATA_DIR
-from testzede.datasets.download import download_dataset, downloadable_datasets
+from testzede.datasets.download import download_dataset, downloadable_datasets, is_downloaded
 from testzede.datasets.errors import DatasetError
 from testzede.datasets.factory import DatasetFactory
 from testzede.datasets.hashing import sha256_file
@@ -55,6 +55,9 @@ def _progress_printer() -> Callable[[str, int, int | None], None]:
 def _cmd_download(args: argparse.Namespace) -> int:
     names = downloadable_datasets() if args.dataset == _ALL else (args.dataset,)
     for name in names:
+        if not args.force and is_downloaded(name, args.data_dir):
+            print(f"{name}: zaten indirilmiş, SHA-256 doğrulandı (yeniden indirilmedi)")
+            continue
         print(f"{name}: indiriliyor...")
         paths = download_dataset(
             name, args.data_dir, force=args.force, progress=_progress_printer()
