@@ -23,6 +23,7 @@ from testzede.gui.pages.call_graph_page import PAGE_TITLE as CALL_GRAPH
 from testzede.gui.pages.coverage_page import CoveragePage
 from testzede.gui.pages.graph_canvas import palette_for
 from testzede.gui.theme_switch import FADE_MS, TIP_TO_DARK, TIP_TO_LIGHT, ThemeSwitch
+from testzede.services.analysis_service import AnalysisService
 
 SOURCE = "def f(a):\n    if a > 0:\n        return 1\n    return 2\n"
 COVERAGE = PAGES.index(CoveragePage)
@@ -173,6 +174,17 @@ def test_call_graph_is_redrawn_with_the_new_background(qtbot, window):
     assert canvas.figure.get_facecolor() == to_rgba(palette_for(True).background)
     window.theme_switch.click()
     assert canvas.figure.get_facecolor() == to_rgba(palette_for(False).background)
+    _wait_fade(qtbot, window.theme_switch)
+
+
+def test_theme_change_keeps_the_call_graph_zoom_and_selection(qtbot, window):
+    canvas = window.page(CALL_GRAPH).canvas
+    canvas.set_view(AnalysisService().call_graph(SOURCE))
+    canvas.axes.set_xlim(-1.0, 1.0)
+    canvas.axes.set_ylim(-2.0, 2.0)
+    window.theme_switch.click()
+    assert canvas.axes.get_xlim() == (-1.0, 1.0)
+    assert canvas.axes.get_ylim() == (-2.0, 2.0)
     _wait_fade(qtbot, window.theme_switch)
 
 

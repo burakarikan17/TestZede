@@ -106,7 +106,7 @@ class ThemeSwitch(QToolButton):
         new = styles.status_colors(self._window)
         styles.recolor(self._window, old, new)
         for canvas in self._window.findChildren(GraphCanvas):  # grafik zemini temaya uyar
-            canvas.set_view(canvas.view, canvas.selected)
+            canvas.refresh_theme()
         self.blockSignals(True)
         self.setChecked(name == theme.DARK_NAME)
         self.blockSignals(False)
