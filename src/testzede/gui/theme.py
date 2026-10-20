@@ -363,17 +363,27 @@ def resolve(name: str | None = None) -> str:
     return LIGHT_NAME
 
 
+_current: str | None = None
+
+
+def current() -> str | None:
+    """En son uygulanan temanın adı; henüz tema uygulanmadıysa ``None``."""
+    return _current
+
+
 def apply(app: QApplication, name: str | None = None) -> str:
     """Temayı uygulamaya uygular ve uygulanan temanın adını döndürür."""
+    global _current
     resolved = resolve(name)
     if resolved == MATERIAL_NAME:
         from qt_material import apply_stylesheet
 
         apply_stylesheet(app, theme="light_blue.xml", invert_secondary=True)
-        return resolved
-    theme = THEMES[resolved]
-    app.setStyle(SpacingStyle())
-    app.setPalette(build_palette(theme))
-    app.setFont(ui_font())
-    app.setStyleSheet(build_qss(theme))
+    else:
+        theme = THEMES[resolved]
+        app.setStyle(SpacingStyle())
+        app.setPalette(build_palette(theme))
+        app.setFont(ui_font())
+        app.setStyleSheet(build_qss(theme))
+    _current = resolved
     return resolved

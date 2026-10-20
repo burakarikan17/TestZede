@@ -16,9 +16,11 @@ def app_theme(qapp):
     from PySide6.QtGui import QFont, QPalette
     from PySide6.QtWidgets import QStyleFactory
 
+    from testzede.gui import theme
     from testzede.gui.app import _apply_theme
 
     style, palette, font = qapp.style().name(), QPalette(qapp.palette()), QFont(qapp.font())
+    current = theme._current
 
     def apply(name: str) -> None:
         _apply_theme(qapp, name)
@@ -28,3 +30,4 @@ def app_theme(qapp):
     qapp.setStyle(QStyleFactory.create(style))
     qapp.setPalette(palette)
     qapp.setFont(font)
+    theme._current = current
