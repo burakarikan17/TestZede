@@ -51,6 +51,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("TestZede")
         self.resize(1200, 780)
         self.nav = QListWidget()
+        self.nav.ensurePolished()  # satır yükseklikleri temanın iç boşluklarıyla hesaplansın
         self.nav.setFixedWidth(200)
         self.stack = QStackedWidget()
         self.pages: list[BasePage] = []

@@ -38,11 +38,16 @@ def _register_fallback_font() -> None:
     if _fallback_registered or QGuiApplication.instance() is None:
         return
     _fallback_registered = True
+    register_matplotlib_font("DejaVuSansMono.ttf")
+
+
+def register_matplotlib_font(filename: str) -> None:
+    """matplotlib'in paketlediği ``filename`` fontunu uygulamaya kaydeder; yoksa bir şey yapmaz."""
     spec = importlib.util.find_spec("matplotlib")
     if spec is None or not spec.submodule_search_locations:
         return
     root = Path(next(iter(spec.submodule_search_locations)))
-    font = root / "mpl-data" / "fonts" / "ttf" / "DejaVuSansMono.ttf"
+    font = root / "mpl-data" / "fonts" / "ttf" / filename
     if font.is_file():
         QFontDatabase.addApplicationFont(str(font))
 
