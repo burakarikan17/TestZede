@@ -27,14 +27,14 @@ from testzede.gui.pages.code_page import CodePage
 from testzede.gui.pages.coverage_page import CoveragePage
 from testzede.gui.pages.metrics_page import MetricsPage
 from testzede.gui.pages.mutation_page import MutationPage
+from testzede.gui.pages.prediction_page import PredictionPage
 from testzede.gui.pages.rl_page import RLPage
 from testzede.gui.state import AppState
 from testzede.gui.theme_switch import ThemeSwitch
 
 PageFactory = Callable[[AppState], BasePage]
 
-# Sayfalar ARCHITECTURE.md §6'daki sırayla eklenir. Tahmin sayfası sahibi tarafından
-# (opsiyonel) buraya eklenecek.
+# Sayfalar ARCHITECTURE.md §6'daki sırayla eklenir.
 PAGES: tuple[PageFactory, ...] = (
     CodePage,
     CallGraphPage,
@@ -43,6 +43,7 @@ PAGES: tuple[PageFactory, ...] = (
     RLPage,
     MutationPage,
     BatchPage,
+    PredictionPage,
 )
 
 

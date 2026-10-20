@@ -30,6 +30,7 @@ from testzede.domain.models import (
     TestCase,
 )
 from testzede.mutation.engine import MutationEngine
+from testzede.prediction.stage import prediction_stage
 from testzede.rl.agent import QLearningAgent
 from testzede.rl.executor import Executor
 from testzede.rl.signature import SignatureError
@@ -65,6 +66,8 @@ class BatchConfig:
         suite_timeout_s: Üretilen test paketinin son (tam) çalıştırması için süre sınırı.
         mutation: Mutasyon aşaması; yapılandırmada ``batch.mutation: true`` ise
             :func:`mutation_stage` kullanılır.
+        prediction: Tahmin aşaması (opsiyonel); ``batch.prediction: true`` ise temel tahmin
+            (:func:`testzede.prediction.stage.prediction_stage`) kullanılır.
     """
 
     rl: RLConfig = field(default_factory=RLConfig)
@@ -84,6 +87,7 @@ class BatchConfig:
             "share_agent": bool(section.pop("share_agent", True)),
             "suite_timeout_s": float(section.pop("suite_timeout_s", 60.0)),
             "mutation": mutation_stage() if bool(section.pop("mutation", False)) else None,
+            "prediction": prediction_stage() if bool(section.pop("prediction", False)) else None,
         }
         if section:
             raise ValueError(f"Bilinmeyen batch ayarı: {', '.join(sorted(section))}")
