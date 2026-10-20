@@ -307,6 +307,10 @@ class GraphCanvas(QWidget):
         self._selected = name
         self._redraw(keep_limits=True)
 
+    def refresh_theme(self) -> None:
+        """Grafiği güncel tema renkleriyle yeniden çizer; yakınlaştırma ve seçim korunur."""
+        self._redraw(keep_limits=True)
+
     def _redraw(self, keep_limits: bool = False) -> None:
         draw_call_graph(
             self.axes,

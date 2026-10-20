@@ -93,7 +93,7 @@ class CoveragePage(BasePage):
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(PAGE_TITLE, state, parent)
-        self.colors = status_colors(self)  # tema çalışırken değişmez
+        self.colors = status_colors(self)  # tema değişince styles.recolor günceller
         self._service = service if service is not None else CoverageService()
         self._tasks = TaskRunner(self)
         self._running = False

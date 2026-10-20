@@ -10,18 +10,18 @@ import sys
 
 from PySide6.QtWidgets import QApplication
 
+from testzede.gui import theme
 from testzede.gui.error_handler import install_global_handler
 from testzede.gui.main_window import MainWindow
 from testzede.logging_setup import Logger
 
 
-def _apply_theme(app: QApplication) -> None:
+def _apply_theme(app: QApplication, name: str | None = None) -> None:
+    """Temayı uygular; ``name`` yoksa ``TESTZEDE_THEME`` kullanılır (bkz. :mod:`gui.theme`)."""
     try:
-        from qt_material import apply_stylesheet
-
-        apply_stylesheet(app, theme="light_blue.xml", invert_secondary=True)
+        theme.apply(app, name)
     except Exception:  # noqa: BLE001 - tema yüklenemezse varsayılan görünümle devam
-        Logger().logger.warning("qt-material teması uygulanamadı", exc_info=True)
+        Logger().logger.warning("Tema uygulanamadı", exc_info=True)
 
 
 def main(argv: list[str] | None = None) -> int:
