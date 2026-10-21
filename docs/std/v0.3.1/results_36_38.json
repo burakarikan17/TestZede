@@ -1,0 +1,240 @@
+{
+  "6.1": {
+    "generated": true,
+    "test_count": 4,
+    "status": "4 test üretildi (7 adım).",
+    "first_test": "import pytest",
+    "code_visible": true
+  },
+  "6.2": {
+    "tiles": {
+      "Test Case Statistics": "4 | üretilen 21, derlenen 21 (%100)",
+      "Branch Count": "4 / 4 | kapsanan",
+      "Tested Line Count": "6 / 6 | kapsanan",
+      "Coverage Rate": "%100 | satır, branch %100"
+    }
+  },
+  "6.3": {
+    "coverage_rate": "%100",
+    "passed": true
+  },
+  "6.5": {
+    "max_event_loop_gap_s": 0.032
+  },
+  "6.4": {
+    "saved": true,
+    "status": "Kaydedildi: <çıktı klasörü>\\test_sign.py (testler kodu 'sign' modülünden import eder)",
+    "pytest_exit": 0,
+    "pytest_tail": "4 passed in 0.05s"
+  },
+  "6.1-T1a": {
+    "generated": true,
+    "test_count": 4,
+    "status": "4 test üretildi (7 adım).",
+    "tiles": {
+      "Test Case Statistics": "4 | üretilen 33, derlenen 33 (%100)",
+      "Branch Count": "4 / 4 | kullanıcı testleri: 1",
+      "Tested Line Count": "6 / 6 | kullanıcı testleri: 3",
+      "Coverage Rate": "%100 | kullanıcı testleri %50 → + RL (satır, branch %100)"
+    },
+    "max_event_loop_gap_s": 0.032
+  },
+  "8.0": {
+    "target": "Split: external",
+    "limit": 5,
+    "formats": {
+      "csv": true,
+      "html": true,
+      "xlsx": true
+    }
+  },
+  "8.1": {
+    "progress_samples": [
+      [
+        -1,
+        0
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        3,
+        3
+      ],
+      [
+        4,
+        4
+      ],
+      [
+        5,
+        5
+      ],
+      [
+        6,
+        6
+      ],
+      [
+        7,
+        7
+      ],
+      [
+        8,
+        8
+      ],
+      [
+        9,
+        9
+      ],
+      [
+        10,
+        10
+      ]
+    ],
+    "rows": [
+      [
+        "HumanEval/0",
+        "tamam",
+        "2",
+        "100.0",
+        "100.0",
+        "100.0",
+        "1.15",
+        ""
+      ],
+      [
+        "HumanEval/1",
+        "tamam",
+        "1",
+        "100.0",
+        "100.0",
+        "100.0",
+        "1.29",
+        ""
+      ],
+      [
+        "HumanEval/10",
+        "tamam",
+        "2",
+        "100.0",
+        "100.0",
+        "100.0",
+        "1.14",
+        ""
+      ],
+      [
+        "HumanEval/100",
+        "tamam",
+        "1",
+        "100.0",
+        "-",
+        "100.0",
+        "1.05",
+        ""
+      ],
+      [
+        "HumanEval/101",
+        "tamam",
+        "3",
+        "90.0",
+        "83.3",
+        "100.0",
+        "1.03",
+        ""
+      ],
+      [
+        "small67/1",
+        "tamam",
+        "1",
+        "100.0",
+        "100.0",
+        "100.0",
+        "1.56",
+        ""
+      ],
+      [
+        "small67/10",
+        "tamam",
+        "3",
+        "100.0",
+        "100.0",
+        "100.0",
+        "1.12",
+        ""
+      ],
+      [
+        "small67/11",
+        "tamam",
+        "1",
+        "80.0",
+        "-",
+        "100.0",
+        "1.01",
+        ""
+      ],
+      [
+        "small67/12",
+        "tamam",
+        "1",
+        "100.0",
+        "100.0",
+        "100.0",
+        "1.12",
+        ""
+      ],
+      [
+        "small67/13",
+        "tamam",
+        "3",
+        "100.0",
+        "100.0",
+        "100.0",
+        "1.15",
+        ""
+      ]
+    ],
+    "progress": "10/10",
+    "status": "Bitti: 10 birim, 0 hatalı. Raporlar: reports\\2026-10-21",
+    "max_event_loop_gap_s": 0.078
+  },
+  "8.2": {
+    "report_dir": "reports\\2026-10-21",
+    "files": [
+      "2026-10-21\\humaneval\\meta.csv",
+      "2026-10-21\\humaneval\\report.html",
+      "2026-10-21\\humaneval\\report.xlsx",
+      "2026-10-21\\humaneval\\results.csv",
+      "2026-10-21\\humaneval\\summary.csv",
+      "2026-10-21\\small67\\meta.csv",
+      "2026-10-21\\small67\\report.html",
+      "2026-10-21\\small67\\report.xlsx",
+      "2026-10-21\\small67\\results.csv",
+      "2026-10-21\\small67\\summary.csv"
+    ]
+  },
+  "8.3": {
+    "split_sha256": "d91c0131d7cd1df940261ee0c71f18d5c216d79a8f6a6d5b24831280a42df8df",
+    "found_in": {
+      "meta.csv": true,
+      "report.html": true,
+      "results.csv": false,
+      "summary.csv": false,
+      "report.xlsx": true
+    }
+  },
+  "8.4": {
+    "first_row_seen": true,
+    "status_after_stop_click": "Durduruluyor: mevcut birim bitince çalıştırma kesilecek…",
+    "finished": true,
+    "rows_after": 2,
+    "status": "Durduruldu: 2 birim, 0 hatalı. Raporlar: reports\\2026-10-21",
+    "stopped_early": true
+  },
+  "genel": {
+    "uncaught_exceptions": 0
+  }
+}

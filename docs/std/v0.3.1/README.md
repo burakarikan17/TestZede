@@ -13,4 +13,14 @@
   veride `make-splits` çıktısı.
 
 3.6 (RL) ve 3.8 (Toplu Test) Enes'in modülleri olduğu için çapraz test kuralı gereği
-Burak Arıkan tarafından doldurulacak.
+Burak Arıkan tarafından Windows'ta (Windows 10 Pro 10.0.19045, Python 3.11.16, develop 09493e4,
+21/10/2026) doldurulmuştur:
+
+- `run_std_gui_36_38.py`: 3.6 ve 3.8 adımlarını gerçek `MainWindow` üzerinde yürütür (K1 + `sign`,
+  T1a, "Testleri Kaydet…" ve pytest, "Split: external" + birim sınırı 5 + CSV/HTML/XLSX,
+  "Durdur"). Çalıştırma: depo kökünden
+  `QT_QPA_PLATFORM=offscreen python docs/std/v0.3.1/run_std_gui_36_38.py <çıktı klasörü>`
+  (veri setleri indirilmiş ve `make-splits` çalıştırılmış olmalı).
+- `results_36_38.json`, `3.6-*.png`, `3.8-*.png`, `3.6-pytest.log`: ham sonuçlar ve kanıtlar.
+- Not: birim sınırı veri seti başına uygulanır; `external` ayrımı iki veri seti içerdiği için sınır 5
+  ile 10 birim çalışır (5 HumanEval + 5 small67).
