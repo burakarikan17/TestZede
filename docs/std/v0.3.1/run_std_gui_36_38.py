@@ -130,7 +130,11 @@ record(
 )
 record("6.2", tiles=tiles(rl))
 rate = rl.tile_rate.value.text()
-record("6.3", coverage_rate=rate, passed=float(rate.strip("%")) >= 80 if rate.startswith("%") else False)
+record(
+    "6.3",
+    coverage_rate=rate,
+    passed=float(rate.strip("%")) >= 80 if rate.startswith("%") else False,
+)
 record("6.5", max_event_loop_gap_s=gap1)
 shot(win, "3.6-2_testler_uretildi")
 
@@ -142,6 +146,7 @@ pump(0.3)
 proc = subprocess.run(
     [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", str(saved)],
     cwd=OUT,
+    check=False,
     capture_output=True,
     text=True,
     timeout=120,
@@ -172,7 +177,9 @@ shot(win, "3.6-4_T1a_sonuc")
 
 # ---- 3.8 Toplu Test ve Rapor -----------------------------------------------------------------
 bp = go(win, "Toplu Test")
-index = next(i for i in range(bp.target_box.count()) if bp.target_box.itemData(i).name == "external")
+index = next(
+    i for i in range(bp.target_box.count()) if bp.target_box.itemData(i).name == "external"
+)
 bp.target_box.setCurrentIndex(index)
 bp.limit_box.setValue(5)
 record(
@@ -198,7 +205,10 @@ while time.monotonic() < end and not (bp.start_button.isEnabled() and not bp._ta
     time.sleep(0.01)
 pump(0.5)
 rows = [
-    [bp.table.item(r, c).text() if bp.table.item(r, c) else "" for c in range(bp.table.columnCount())]
+    [
+        bp.table.item(r, c).text() if bp.table.item(r, c) else ""
+        for c in range(bp.table.columnCount())
+    ]
     for r in range(bp.table.rowCount())
 ]
 record(
@@ -212,7 +222,11 @@ record(
 shot(win, "3.8-3_bitti")
 
 report_dir = bp._report_dir
-files = sorted(str(p.relative_to(report_dir.parent)) for p in report_dir.rglob("*") if p.is_file()) if report_dir else []
+files = (
+    sorted(str(p.relative_to(report_dir.parent)) for p in report_dir.rglob("*") if p.is_file())
+    if report_dir
+    else []
+)
 record("8.2", report_dir=str(report_dir), files=files)
 split_sha = hashlib.sha256(Path("data/splits/external.json").read_bytes()).hexdigest()
 hits = {}
