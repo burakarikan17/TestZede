@@ -1,0 +1,55 @@
+### 9.1 download all (1)
+humaneval: indiriliyor...
+  test.parquet: %100 (0.1/0.1 MB)
+humaneval: hazır (test.parquet)
+testgeneval-lite: indiriliyor...
+  test.parquet: %0 (0.3/7.0 MB)
+  test.parquet: %10 (0.8/7.0 MB)
+  test.parquet: %20 (1.6/7.0 MB)
+  test.parquet: %30 (2.4/7.0 MB)
+  test.parquet: %40 (2.9/7.0 MB)
+  test.parquet: %50 (3.7/7.0 MB)
+  test.parquet: %60 (4.5/7.0 MB)
+  test.parquet: %70 (5.0/7.0 MB)
+  test.parquet: %80 (5.8/7.0 MB)
+  test.parquet: %90 (6.6/7.0 MB)
+  test.parquet: %100 (7.0/7.0 MB)
+  dev.parquet: %30 (0.3/0.7 MB)
+  dev.parquet: %70 (0.5/0.7 MB)
+  dev.parquet: %100 (0.7/0.7 MB)
+testgeneval-lite: hazır (test.parquet, dev.parquet)
+testgeneval: indiriliyor...
+  test.parquet: %0 (0.3/57.8 MB)
+  test.parquet: %10 (6.0/57.8 MB)
+  test.parquet: %20 (11.8/57.8 MB)
+  test.parquet: %30 (17.6/57.8 MB)
+  test.parquet: %40 (23.3/57.8 MB)
+  test.parquet: %50 (29.1/57.8 MB)
+  test.parquet: %60 (34.9/57.8 MB)
+  test.parquet: %70 (40.6/57.8 MB)
+  test.parquet: %80 (46.4/57.8 MB)
+  test.parquet: %90 (52.2/57.8 MB)
+  test.parquet: %100 (57.8/57.8 MB)
+testgeneval: hazır (test.parquet)
+Not: 67_Python_Code_Small ders sorumlusundan alınır; .xlsx dosyasını <veri>/raw/small67 altına koyun.
+exit=0
+### 9.2 download all (2)
+humaneval: zaten indirilmiş, SHA-256 doğrulandı (yeniden indirilmedi)
+testgeneval-lite: zaten indirilmiş, SHA-256 doğrulandı (yeniden indirilmedi)
+testgeneval: zaten indirilmiş, SHA-256 doğrulandı (yeniden indirilmedi)
+Not: 67_Python_Code_Small ders sorumlusundan alınır; .xlsx dosyasını <veri>/raw/small67 altına koyun.
+exit=0
+### 9.3 make-splits
+development: 134 birim (testgeneval-lite: 134) -> <veri>/splits/development.json
+  SHA-256: a80354fd05d025a3cdee25659470be460254b0f3c0a13e6987e4e8cf836dbd53
+main: 291 birim (testgeneval: 291) -> <veri>/splits/main.json
+  SHA-256: b5e72c416bce338380862d6cb3f0d7d2fa5a23cdc01bc52ca58d381ef31851db
+external: 230 birim (humaneval: 164, small67: 66) -> <veri>/splits/external.json
+  SHA-256: d91c0131d7cd1df940261ee0c71f18d5c216d79a8f6a6d5b24831280a42df8df
+exit=0
+development.json
+external.json
+main.json
+### 9.4 eksik veri
+Hata: Eksik veri setleri: humaneval. İndirmek için: testzede download --dataset all (small67 ders sorumlusundan alınır; --allow-missing ile atlanabilir).
+exit=1
