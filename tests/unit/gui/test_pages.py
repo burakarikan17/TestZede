@@ -161,6 +161,7 @@ def test_main_window_hosts_pages(qtbot, monkeypatch):
         "RL Test Üretimi",
         "Mutasyon",
         "Toplu Test",
+        "Tahmin",
     ]
     window.nav.setCurrentRow(window.pages.index(window.page("Toplu Test")))
     assert window.stack.currentWidget() is window.page("Toplu Test")

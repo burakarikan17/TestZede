@@ -232,3 +232,9 @@ def test_frozen_config_is_valid_and_preferred():
     assert default_config_path() == Path("configs/frozen.yaml")
     config = BatchConfig.from_mapping(load_config(Path("configs/frozen.yaml")))
     assert config.rl.episodes == 3 and config.rl.env.patience == 20
+
+
+def test_prediction_stage_is_wired_only_when_enabled():
+    assert BatchConfig.from_mapping({}).prediction is None
+    assert BatchConfig.from_mapping({"batch": {"prediction": False}}).prediction is None
+    assert callable(BatchConfig.from_mapping({"batch": {"prediction": True}}).prediction)
