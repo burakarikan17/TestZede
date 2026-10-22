@@ -377,7 +377,7 @@ Uçtan uca hattın (test üretimi → alt süreçte çalıştırma → coverage 
 
 # 6. TASARIM KALIPLARI VE GEREKÇELERİ
 
-ARCHITECTURE §5'teki kalıplar kodda aşağıdaki yerlerde uygulanmıştır. Son iki satır ARCHITECTURE tablosunda yoktur ama kodda vardır.
+ARCHITECTURE §5'teki kalıplar kodda aşağıdaki yerlerde uygulanmıştır. Son iki satır (bağımlılık enjeksiyonu, Template Method) ARCHITECTURE tablosunda yoktur ama kodda vardır.
 
 | Kalıp | Uygulandığı yer (kod) | Gerekçe |
 |---|---|---|
@@ -390,7 +390,7 @@ ARCHITECTURE §5'teki kalıplar kodda aşağıdaki yerlerde uygulanmıştır. So
 | Bağımlılık enjeksiyonu (Protocol ile) | `rl.executor.Executor` ← `execution.SandboxExecutor`; `services.mutation_service.MutationEngine` ← `mutation.engine.MutationEngine` | `rl` çalıştırma koduna import ile bağlanmaz; birim testlerinde sahte çalıştırıcı verilebilir. |
 | Template Method | `gui/pages/analysis_common.AnalysisPage.run` → alt sınıfların `_compute` / `_render`'ı; `mutation/operators._SiteOperator.generate` → alt sınıfların `_sites`'ı | Arka plan işi, hata gösterimi ve eski sonuç notu bir kez yazılır; alt sınıflar yalnızca farklı olan adımı tanımlar. |
 
-ARCHITECTURE §5 `config.Settings` için de Singleton yazar; kodda böyle bir sınıf yoktur (yapılandırma `config.load_config` fonksiyonuyla okunur). Bu fark §9'da listelenmiştir.
+ARCHITECTURE §5 eskiden `config.Settings` için de Singleton yazıyordu; kodda böyle bir sınıf yoktur (yapılandırma `config.load_config` fonksiyonuyla okunur). ARCHITECTURE düzeltildi (§9, T1).
 
 # 7. HATA VE SINIR DURUMLARI
 
@@ -476,19 +476,19 @@ Aşağıdaki tablo sözleşme gereksinimlerini tasarım bileşenine ve STD testi
 
 # 9. TUTARSIZLIKLAR VE DOĞRULANAMAYANLAR
 
-Kod, README, ARCHITECTURE.md, sözleşme ve STD karşılaştırılırken bulunan farklar aşağıdadır. Bu doküman kodu esas almıştır; dokümanlardan hangisinin güncelleneceği ekip kararıdır.
+Kod, README, ARCHITECTURE.md, sözleşme ve STD karşılaştırılırken bulunan farklar aşağıdadır. Bu doküman kodu esas almıştır. ARCHITECTURE.md'deki ifadeler koda uydurulmuştur ("Durum" sütunu); README, `pyproject.toml`, sözleşme ekleri ve STD'deki farklar için hangi belgenin güncelleneceği ekip kararıdır.
 
-| # | Kaynak ve ifade | Kodda olan |
-|---|---|---|
-| T1 | ARCHITECTURE §5: Singleton — `config.Settings` | `config.py`'de `Settings` sınıfı yok; yalnızca `load_config` / `default_config_path` fonksiyonları var. Singleton yalnızca `logging_setup.Logger`. |
-| T2 | ARCHITECTURE §3: Compilation Rate = `ast.parse` + `py_compile` + pytest toplama | `py_compile` kullanılmıyor. Derlenmiş sayılan: `ast.parse`'tan geçen ve pytest sonucu `error` olmayan test. Zaman aşımına uğrayan test derlenmiş sayılır. |
-| T3 | ARCHITECTURE §3 (rl): "Opsiyonel karşılaştırma: gymnasium uyumlu ortam üzerinde stable-baselines3 PPO" | PPO / stable-baselines3 kodu yok. `rl/env.py` gymnasium'a bağımlı değil (dosya açıklaması böyle der). |
-| T4 | README teknoloji listesi, EK-B ve `pyproject.toml`: `gymnasium` bağımlılık | `src/` içinde `gymnasium` import edilmiyor; bağımlılık kullanılmıyor. |
-| T5 | ARCHITECTURE §1 diyagramı: `CLI --> services` | `cli.py` `services`'i kullanmaz; doğrudan `batch`, `datasets`, `execution`, `config`'i import eder. |
-| T6 | ARCHITECTURE §1 diyagramı: `RL --> EX`; `PR --> DOM` (yalnızca) | `rl` `execution`'ı import etmez (Protocol + enjeksiyon). `prediction` `rl`'i de import eder (`rl.env`, `rl.trainer`). |
-| T7 | ARCHITECTURE §6, README, EK-B: "PySide6 + qt-material (Material Design teması)" | Varsayılan tema `gui/theme.py`'deki özel açık/koyu temadır (Fusion + QSS); qt-material yalnızca `TESTZEDE_THEME=material` ile seçilen geri dönüş temasıdır. |
-| T8 | ARCHITECTURE §6: Coverage sayfası "Emma benzeri ağaç görünümü (eleman / coverage / kapsanan / kaçan / toplam)" | Kodda ağaç (`QTreeWidget`) yok; "Fonksiyonlar" (Fonksiyon, Kapsama %) ve "Test Sonuçları" (Test, Sonuç) tabloları, renkli kaynak görünümü ve özet satırı var. |
-| T9 | README Kurulum: "TestGenEval koşuları için Docker (opsiyonel)" | EK-B: "Docker: Gerekmez". Kodda Docker kullanımı yok; README ifadesi eski görünüyor. |
-| T10 | STD 1.2: testler iki platformda yapılır | STD 4.1'deki test ortamı ve "Test eden" satırına göre her test tek platformda koşulmuş (3.1–3.5, 3.7, 3.9 macOS; 3.6, 3.8 Windows). |
+| # | Kaynak ve ifade | Kodda olan | Durum |
+|---|---|---|---|
+| T1 | ARCHITECTURE §5: Singleton — `config.Settings` | `config.py`'de `Settings` sınıfı yok; yalnızca `load_config` / `default_config_path` fonksiyonları var. Singleton yalnızca `logging_setup.Logger`. | ARCHITECTURE düzeltildi |
+| T2 | ARCHITECTURE §3: Compilation Rate = `ast.parse` + `py_compile` + pytest toplama | `py_compile` kullanılmıyor. Derlenmiş sayılan: `ast.parse`'tan geçen ve pytest sonucu `error` olmayan test. Zaman aşımına uğrayan test derlenmiş sayılır. | ARCHITECTURE düzeltildi |
+| T3 | ARCHITECTURE §3 (rl): "Opsiyonel karşılaştırma: gymnasium uyumlu ortam üzerinde stable-baselines3 PPO" | PPO / stable-baselines3 kodu yok. `rl/env.py` gymnasium'a bağımlı değil (dosya açıklaması böyle der). | ARCHITECTURE düzeltildi |
+| T4 | README teknoloji listesi, EK-B ve `pyproject.toml`: `gymnasium` bağımlılık | `src/` içinde `gymnasium` import edilmiyor; bağımlılık kullanılmıyor. | Açık (README, EK-B, `pyproject.toml`) |
+| T5 | ARCHITECTURE §1 diyagramı: `CLI --> services` | `cli.py` `services`'i kullanmaz; doğrudan `batch`, `datasets`, `execution`, `config`'i import eder. | ARCHITECTURE düzeltildi |
+| T6 | ARCHITECTURE §1 diyagramı: `RL --> EX`; `PR --> DOM` (yalnızca) | `rl` `execution`'ı import etmez (Protocol + enjeksiyon). `prediction` `rl`'i de import eder (`rl.env`, `rl.trainer`). | ARCHITECTURE düzeltildi |
+| T7 | ARCHITECTURE §6, README, EK-B: "PySide6 + qt-material (Material Design teması)" | Varsayılan tema `gui/theme.py`'deki özel açık/koyu temadır (Fusion + QSS); qt-material yalnızca `TESTZEDE_THEME=material` ile seçilen geri dönüş temasıdır. | ARCHITECTURE düzeltildi; README, EK-B açık |
+| T8 | ARCHITECTURE §6: Coverage sayfası "Emma benzeri ağaç görünümü (eleman / coverage / kapsanan / kaçan / toplam)" | Kodda ağaç (`QTreeWidget`) yok; "Fonksiyonlar" (Fonksiyon, Kapsama %) ve "Test Sonuçları" (Test, Sonuç) tabloları, renkli kaynak görünümü ve özet satırı var. | ARCHITECTURE düzeltildi |
+| T9 | README Kurulum: "TestGenEval koşuları için Docker (opsiyonel)" | EK-B: "Docker: Gerekmez". Kodda Docker kullanımı yok; README ifadesi eski görünüyor. | Açık (README) |
+| T10 | STD 1.2: testler iki platformda yapılır | STD 4.1'deki test ortamı ve "Test eden" satırına göre her test tek platformda koşulmuş (3.1–3.5, 3.7, 3.9 macOS; 3.6, 3.8 Windows). | Açık (ekip kararı, STD) |
 
 Doğrulanamayan: Trello kartlarının içeriği depoda yok; bu dokümanda Trello'ya dayanan bir ifade yoktur.

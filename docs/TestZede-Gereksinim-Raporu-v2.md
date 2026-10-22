@@ -214,7 +214,7 @@ Bu bölümdeki konularda karar verilmemiştir; yalnızca dayanaklar yazılmışt
 - README: "Diğer teslimler: Yazılım Şartnamesi (3), …"; görev dağılımında "Şartname" Burak Arıkan'a atanmış.
 - Bu rapor (GER-001 … GER-053) ekleri tek listede, kimlik ve doğrulama yöntemiyle topladığı için şartnamenin gereksinim bölümünü de karşılayabilir; ancak dersin "Yazılım Şartnamesi" için istediği biçim depoda yok, doğrulanamadı.
 
-**K2 — Kodla çelişen belge ifadeleri hangi belgede düzeltilecek?** SDD §9'daki T1–T10. Bu raporu doğrudan etkileyenler:
+**K2 — Kodla çelişen belge ifadeleri hangi belgede düzeltilecek?** SDD §9'daki T1–T10. ARCHITECTURE.md'deki ifadeler (T1–T3, T5–T8) koda uydurulmuştur; README, `pyproject.toml`, sözleşme ekleri ve STD'deki farklar açıktır. Bu raporu doğrudan etkileyenler:
 
 - GER-037: EK-B "Docker: Gerekmez", README Kurulum "TestGenEval koşuları için Docker (opsiyonel)". Kodda Docker yok.
 - GER-038: EK-B ve `pyproject.toml` `gymnasium`'u listeler; kod kullanmaz (`rl/env.py` gymnasium'a bağımlı değil).

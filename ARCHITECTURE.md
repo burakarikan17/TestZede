@@ -2,24 +2,39 @@
 
 ## 1. Genel bakış
 
-Uygulama **N katmanlı** mimaridedir. Her katman yalnızca bir alttakine bağımlıdır;
-GUI hiçbir çekirdek modülü doğrudan çağırmaz, `services` cephesini kullanır.
+Uygulama **N katmanlı** mimaridedir. GUI hiçbir çekirdek modülü doğrudan çağırmaz,
+`services` cephesini kullanır; çekirdek türlerini yalnızca tip ipucu olarak
+(`if TYPE_CHECKING:`) import eder. Komut satırı (`cli`) ise `services`'i kullanmaz,
+çekirdek paketleri doğrudan çağırır. Oklar koddaki `import` bağımlılıklarıdır.
 
 ```mermaid
 flowchart TD
     GUI[gui — PySide6 sayfaları] --> SVC[services — Facade]
-    CLI[cli — testzede komutları] --> SVC
+    CLI[cli — testzede komutları] --> BA[batch]
+    CLI --> DS[datasets]
+    CLI --> EX[execution]
+    CLI -. "yalnızca testzede gui" .-> GUI
     SVC --> AN[analysis]
     SVC --> RL[rl]
-    SVC --> EX[execution]
+    SVC --> EX
     SVC --> MU[mutation]
     SVC --> PR[prediction]
-    SVC --> BA[batch]
-    RL --> EX
+    SVC --> BA
+    SVC --> DS
+    BA --> AN & DS & MU & PR & RL
+    PR --> RL
     MU --> EX
-    BA --> DS[datasets]
-    AN & RL & EX & MU & PR & BA --> DOM[domain — ortak modeller]
+    EX -. "Executor protokolünü karşılar (import yok)" .-> RL
+    AN & RL & EX & MU & PR & BA & DS & SVC & GUI --> DOM[domain — ortak modeller]
+    SVC & CLI --> CFG[config]
+    GUI --> LOG[logging_setup]
 ```
+
+- `rl` yalnızca `domain`'e bağımlıdır; çalıştırma `rl/executor.py`'deki `Executor`
+  protokolü üzerinden yapılır, gerçek uygulama (`execution.SandboxExecutor`) dışarıdan
+  verilir.
+- `prediction`, `rl`'in eğri ve epizot türlerini (`rl.env.CurvePoint`,
+  `rl.trainer.EpisodeResult`) import eder.
 
 ## 2. Domain sözleşmesi
 
@@ -32,8 +47,8 @@ herkesi etkiler, PR'da üç kişinin de onayı gerekir.
 class CodeUnit:
     uid: str  # "HumanEval/12", "small67/5", "<repo>::<modül>.<fonk>"
     source: str
-    entry_point: str | None  # test edilecek fonksiyon adı
-    dataset: str | None
+    entry_point: str | None = None  # test edilecek fonksiyon adı
+    dataset: str | None = None
     seed_examples: tuple[str, ...] = ()  # docstring'deki >>> örnekleri
 
 
@@ -50,7 +65,7 @@ class CoverageReport:
     total_lines: int
     covered_branches: int
     total_branches: int
-    per_function: dict[str, float]  # Emma benzeri ağaç görünümü için
+    per_function: dict[str, float] = field(default_factory=dict)  # fonksiyon → kapsama oranı (0–1)
 
     @property
     def line_rate(self) -> float: ...
@@ -112,8 +127,9 @@ class Prediction:
   Uygulamayı asla düşürmez (Madde-1).
 - `coverage_runner.py`: `coverage run --branch -m pytest` çalıştırır, JSON çıktısını
   `CoverageReport`'a çevirir.
-- Compilation Rate: üretilen test dosyasının `ast.parse` + `py_compile` + pytest
-  toplama (collection) aşamasını hatasız geçme oranıdır.
+- Compilation Rate: derlenen test sayısının üretilen test sayısına oranıdır. `ast.parse` ile
+  ayrıştırılamayan test ve pytest raporunda `error` olan test (toplama hatası, çöken süreç)
+  derlenmemiş sayılır; `py_compile` kullanılmaz. Zaman aşımına uğrayan test derlenmiş sayılır.
 
 ### rl (US-3, US-4)
 
@@ -126,7 +142,7 @@ Her **epizot** bir `CodeUnit` (test edilen fonksiyon) üzerinde geçer.
 | Ödül | `r = α·Δline + β·Δbranch + γ·yeni_çıktı_sınıfı − δ·(geçersiz/timeout) − ε` (ε: test başı maliyet; gereksiz test üretimini cezalandırır, optimum test sayısına yaklaştırır) |
 | Bitiş | %100 branch coverage, maksimum adım ya da N adım boyunca coverage artışı olmaması |
 | Oracle | Girdi, referans (canonical) çözümde çalıştırılır; çıktı `assert` olarak yazılır (regresyon oracle'ı). İstisna fırlatan girdiler `pytest.raises` testine dönüşür. |
-| Ajan | Temel: tabular Q-learning (ε-greedy). Opsiyonel karşılaştırma: gymnasium uyumlu ortam üzerinde stable-baselines3 PPO. |
+| Ajan | Tabular Q-learning (ε-greedy, NumPy Q-tablosu). Ortam (`rl/env.py`) gymnasium'a benzer `reset()` / `step()` API'si sunar ama gymnasium'a bağımlı değildir; PPO / stable-baselines3 yoktur. |
 | Kullanıcı testleri (US-3 artırım) | Kullanıcı kendi test dosyasını verirse ortam her epizoda bu testlerin coverage'ıyla başlar; RL yalnızca kapsanmayan satır/dallar için test ekler. Test dosyasındaki kaynak modülü import'ları `target`'a çevrilir. Kullanıcı testleri zaten tam kapsıyorsa test üretilmez. Sonuç "kullanıcı testleri" ve "kullanıcı testleri + RL" coverage'ı olarak iki değer verir. |
 | Generator fonksiyonları | Oracle ve üretilen testler ilk `GENERATOR_LIMIT` (50) öğeyi `list(islice(f(...), 50))` ile tüketir; aksi halde gövde hiç çalışmaz. |
 
@@ -222,7 +238,7 @@ olarak üretilir. Kurallar:
 | Kalıp | Nerede |
 |---|---|
 | N katmanlı mimari | gui → services → çekirdek → domain |
-| Singleton | `config.Settings`, `logging_setup.Logger` |
+| Singleton | `logging_setup.Logger` (yapılandırma Singleton değildir: `config.load_config` / `default_config_path` fonksiyonlarıyla okunur) |
 | Facade | `services/*_service.py` |
 | Strategy | RL eylemleri, mutasyon operatörleri |
 | Factory | `DatasetFactory` |
@@ -230,14 +246,16 @@ olarak üretilir. Kurallar:
 
 ## 6. Arayüz
 
-PySide6 + qt-material (Material Design teması). Sayfalar ve sahipleri:
+PySide6. Varsayılan tema `gui/theme.py`'deki özel açık/koyu temadır (Fusion + QSS, sağ üstteki
+düğmeyle geçiş); qt-material (`light_blue`) yalnızca `TESTZEDE_THEME=material` ile seçilen geri
+dönüş temasıdır. Sayfalar ve sahipleri:
 
 | Sayfa | İçerik | Sahibi |
 |---|---|---|
 | Kod Yükle | Kaynak kod ve test kodu seçimi | Emre |
 | Çağrı Grafiği | US-1 grafiği (matplotlib), düğüm tablosu ve ayrıntı | Burak |
 | Metrikler | US-2: 14 metrik, açıklama, sürdürülebilirlik derecesi, CSV dışa aktarma | Burak |
-| Coverage | Emma benzeri ağaç görünümü (eleman / coverage / kapsanan / kaçan / toplam) | Emre |
+| Coverage | Satır/dal/derlenme/süre özeti, renkli kaynak görünümü (kapsanan, kısmi, kaçan), "Fonksiyonlar" (Fonksiyon, Kapsama %) ve "Test Sonuçları" (Test, Sonuç) tabloları | Emre |
 | RL Test Üretimi | Üretilen testler + alt şerit: Test Case Statistics, Branch Count, Tested Line Count, Coverage Rate | Enes |
 | Mutasyon | Mutation score, süre, derlenebilirlik oranı | Emre |
 | Toplu Test | Veri seti seçimi, ilerleme çubuğu, rapor | Enes |
@@ -245,7 +263,7 @@ PySide6 + qt-material (Material Design teması). Sayfalar ve sahipleri:
 
 Uzun işlemlerin tamamı `QThread` içinde çalışır; GUI iş parçacığı asla bloklanmaz.
 
-- Giriş: `testzede gui` → `gui/app.py` (qt-material teması, global `sys.excepthook`).
+- Giriş: `testzede gui` → `gui/app.py` (`gui.theme` ile tema, global `sys.excepthook`).
 - `gui/main_window.py`: soldaki listeden sayfa seçilir. Yeni sayfa `PAGES` demetine yukarıdaki
   sırayla eklenir; `PAGES` öğesi `AppState` alıp sayfa döndüren bir fabrikadır (sayfa sınıfının
   kendisi olabilir). Sayfa seçilince `on_enter()` çağrılır; arka planda iş çalıştıran sayfa
