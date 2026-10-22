@@ -1,21 +1,23 @@
-"""Gerçek qt-material temasıyla çizim testleri: monospace font ve başlık kırpılması.
+"""Gerçek temalarla çizim testleri: monospace font ve başlık kırpılması.
 
-Tema genel ``* { font-family: Roboto }`` kuralıyla ``setFont``'u ezer ve
+İki tema denenir: uygulamanın açık teması (``light``) ve geri dönüş yolu olan qt-material
+(``material``). qt-material genel ``* { font-family: Roboto }`` kuralıyla ``setFont``'u ezer ve
 ``QHeaderView::section { text-transform: uppercase }`` ile başlıkları, boyut hesabında
-kullanılmayan BÜYÜK harfle çizer. Bu testler widget bayraklarına değil, temalı pencerede
-gerçekten çizilen sonuca (font ölçüleri, ``grab`` pikselleri) bakar.
+kullanılmayan BÜYÜK harfle çizer; ``styles`` düzeltmeleri bu yüzden vardır. Açık temada bu iki
+kök neden yoktur (font QSS'te verilmez, başlıklar yazıldığı gibi çizilir).
+Bu testler widget bayraklarına değil, temalı pencerede gerçekten çizilen sonuca
+(font ölçüleri, ``grab`` pikselleri) bakar.
 """
 
 from __future__ import annotations
 
 import pytest
-from PySide6.QtGui import QFontDatabase, QFontInfo, QFontMetricsF, QImage, QTextCursor
+from PySide6.QtGui import QFont, QFontDatabase, QFontInfo, QFontMetricsF, QImage, QTextCursor
 from PySide6.QtWidgets import QPlainTextEdit, QTableWidget, QTableWidgetItem
 from result_builders import make_result
 
 from testzede.domain.models import MutationReport, RunStats, TestCase
-from testzede.gui import styles
-from testzede.gui.app import _apply_theme
+from testzede.gui import styles, theme
 from testzede.gui.main_window import PAGES, MainWindow
 from testzede.gui.pages.coverage_page import CoveragePage
 from testzede.gui.pages.mutation_page import MutationPage
@@ -23,14 +25,16 @@ from testzede.mutation.engine import MutationRun
 from testzede.mutation.operators import generate_all
 
 SOURCE = "def f(a):\n    if a > 0:\n        return 1\n    return 2\n"
-PADDING = 24  # QHeaderView::section { padding: 0 24px } (qt-material)
+# Tablo başlığı yatay iç boşluğu: qt-material ``padding: 0 24px``, açık tema ``HEADER_PADDING``.
+PADDINGS = {theme.LIGHT_NAME: theme.HEADER_PADDING, theme.MATERIAL_NAME: 24}
 
 
-@pytest.fixture
-def themed(qtbot, qapp) -> MainWindow:
-    """Tema uygulanmış, sonuçları yüklenmiş, görünür ana pencere."""
-    _apply_theme(qapp)
+@pytest.fixture(params=list(PADDINGS))
+def themed(request, qtbot, app_theme) -> MainWindow:
+    """Tema uygulanmış, sonuçları yüklenmiş, görünür ana pencere (``theme_name`` özniteliğiyle)."""
+    app_theme(request.param)
     window = MainWindow()
+    window.theme_name = request.param
     qtbot.addWidget(window)
     state = window.state
     state.source = SOURCE
@@ -51,8 +55,13 @@ def themed(qtbot, qapp) -> MainWindow:
         row = PAGES.index(page)
         window.nav.setCurrentRow(row)
         qtbot.wait(20)
-    yield window
-    qapp.setStyleSheet("")
+    return window
+
+
+@pytest.fixture
+def material(app_theme) -> None:
+    """Yalnızca qt-material: ``styles`` düzeltmelerinin kök nedenleri bu temadadır."""
+    app_theme(theme.MATERIAL_NAME)
 
 
 def _is_proportional(widget) -> bool:
@@ -80,13 +89,20 @@ def test_four_code_views_are_really_monospace_under_the_theme(themed):
 
 def test_monospace_fix_does_not_leak_to_other_widgets(themed):
     code, coverage = themed.page("Kod Yükle"), themed.page("Coverage")
+    # Diğer widget'lar temanın arayüz fontuyla çizilir: qt-material'de Roboto, açık temada
+    # theme.ui_font() (Segoe UI; yoksa sıradaki sans-serif).
+    expected = (
+        "Roboto"
+        if themed.theme_name == theme.MATERIAL_NAME
+        else QFontInfo(theme.ui_font()).family()
+    )
     for widget in (code.status_label, coverage.run_button, coverage.function_table):
         widget.ensurePolished()
         assert _is_proportional(widget)
-        assert QFontInfo(widget.font()).family() == "Roboto"
+        assert QFontInfo(widget.font()).family() == expected
 
 
-def test_without_the_fix_the_theme_overrides_set_font(qtbot, themed):
+def test_without_the_fix_the_theme_overrides_set_font(qtbot, material):
     plain = QPlainTextEdit()
     qtbot.addWidget(plain)
     font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
@@ -95,6 +111,19 @@ def test_without_the_fix_the_theme_overrides_set_font(qtbot, themed):
     plain.show()
     plain.ensurePolished()
     assert _is_proportional(plain)  # kök neden: tema setFont'u eziyor
+
+
+def test_light_theme_keeps_set_font(qtbot, app_theme):
+    """Açık tema fontu QSS'te vermez: düzeltmesiz editörde de ``setFont`` geçerli kalır."""
+    app_theme(theme.LIGHT_NAME)
+    styles._register_fallback_font()  # başsız ortamda da bir monospace font olsun
+    plain = QPlainTextEdit()
+    qtbot.addWidget(plain)
+    plain.setFont(QFont("DejaVu Sans Mono"))
+    plain.show()
+    plain.ensurePolished()
+    assert QFontInfo(plain.font()).family() == "DejaVu Sans Mono"
+    assert not _is_proportional(plain)
 
 
 def test_fallback_font_is_registered_once(themed):
@@ -218,6 +247,7 @@ def _our_tables(window: MainWindow) -> dict[str, QTableWidget]:
 
 
 def test_header_text_is_fully_drawn_in_our_three_tables(themed):
+    padding = PADDINGS[themed.theme_name]
     for name, table in _our_tables(themed).items():
         header = table.horizontalHeader()
         header.ensurePolished()
@@ -229,42 +259,60 @@ def test_header_text_is_fully_drawn_in_our_three_tables(themed):
             left, right = extent
             width = header.sectionSize(column)
             # Metin, padding içindeki metin alanına sığar (kırpılmaz) ...
-            assert left >= PADDING - 1 and right <= width - PADDING + 1, (name, text, extent, width)
+            assert left >= padding - 1 and right <= width - padding + 1, (name, text, extent, width)
             # ... ve BÜYÜK harfe çevrilmeden, ölçülen genişlikte çizilir.
             assert right - left <= advance + 3, (name, text, right - left, advance)
 
 
 def test_header_section_is_wide_enough_for_the_drawn_text(themed):
+    padding = PADDINGS[themed.theme_name]
     for name, table in _our_tables(themed).items():
         header = table.horizontalHeader()
         for column in range(table.columnCount()):
             text = table.horizontalHeaderItem(column).text()
             assert header.sectionSize(
                 column
-            ) - 2 * PADDING >= header.fontMetrics().horizontalAdvance(text), (name, text)
+            ) - 2 * padding >= header.fontMetrics().horizontalAdvance(text), (name, text)
 
 
-def test_unfixed_table_shows_the_uppercase_clipping_root_cause(qtbot, themed):
-    """Kontrol: düzeltmesiz tabloda tema başlığı BÜYÜK harf çizer ve dar sütunda taşar."""
+def _unfixed_table(qtbot) -> QTableWidget:
+    """``fix_table_header`` uygulanmamış, dar sütunlu, görünür tablo."""
+    from PySide6.QtWidgets import QHeaderView
+
     table = QTableWidget(1, 2)
     qtbot.addWidget(table)
     table.setHorizontalHeaderLabels(["Operatör", "Satır"])
     table.setItem(0, 0, QTableWidgetItem("x"))
-    header = table.horizontalHeader()
-    from PySide6.QtWidgets import QHeaderView
-
-    header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+    table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
     table.resize(500, 200)
     table.show()
     qtbot.waitExposed(table)
-    header.ensurePolished()
+    table.horizontalHeader().ensurePolished()
+    return table
+
+
+def _clipped_headers(table: QTableWidget, padding: int) -> list[str]:
+    """BÜYÜK harf çizildiği (ölçülenden geniş) ya da iç boşluğa taştığı için kırpılan başlıklar."""
+    header = table.horizontalHeader()
     clipped = []
     for column, text in enumerate(["Operatör", "Satır"]):
         left, right = _header_text_extent(header, column)
         advance = header.fontMetrics().horizontalAdvance(text)
-        if right - left > advance + 3 or right > header.sectionSize(column) - PADDING:
+        if right - left > advance + 3 or right > header.sectionSize(column) - padding:
             clipped.append(text)
+    return clipped
+
+
+def test_unfixed_table_shows_the_uppercase_clipping_root_cause(qtbot, material):
+    """Kontrol: qt-material'de düzeltmesiz başlık BÜYÜK harf çizilir ve dar sütunda taşar."""
+    clipped = _clipped_headers(_unfixed_table(qtbot), PADDINGS[theme.MATERIAL_NAME])
     assert clipped, "tema başlığı artık BÜYÜK harf çizmiyor olabilir; düzeltme gereksiz kalabilir"
+
+
+def test_light_theme_draws_unfixed_headers_as_written(qtbot, app_theme):
+    """Açık temada kök neden yok: düzeltmesiz başlık da yazıldığı gibi, kırpılmadan çizilir."""
+    app_theme(theme.LIGHT_NAME)
+    assert _clipped_headers(_unfixed_table(qtbot), PADDINGS[theme.LIGHT_NAME]) == []
 
 
 # --- styles birim testleri ---------------------------------------------------------------------

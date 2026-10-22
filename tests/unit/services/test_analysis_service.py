@@ -92,7 +92,8 @@ def test_layout_orders_children_under_their_parents():
 
 
 def test_layout_is_deterministic():
-    assert view(MIXED) == view(MIXED)
+    first, second = view(MIXED), view(MIXED)
+    assert first == second
 
 
 def test_unknown_node_raises_key_error():
@@ -215,3 +216,16 @@ def test_humaneval_missing_data_explains_how_to_download(tmp_path):
     assert not service.humaneval_available()
     with pytest.raises(ServiceError, match="testzede download --dataset humaneval"):
         service.humaneval_tasks()
+
+
+def test_prediction_combines_halstead_bugs_and_mccabe_tests():
+    view = AnalysisService().prediction("def f(x):\n    if x:\n        return 1\n    return 0\n")
+    assert view.optimum_test_count == 2 and view.complexity == 2
+    assert view.estimated_bugs == pytest.approx(view.volume / 3000.0)
+    assert view.method.startswith("Halstead")
+
+
+@pytest.mark.parametrize("source", ["", "   \n", "def f(:\n"])
+def test_prediction_rejects_empty_or_broken_code(source):
+    with pytest.raises(ServiceError):
+        AnalysisService().prediction(source)

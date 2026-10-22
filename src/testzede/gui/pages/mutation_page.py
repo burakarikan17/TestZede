@@ -70,7 +70,7 @@ class MutationPage(BasePage):
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(PAGE_TITLE, state, parent)
-        self.colors = status_colors(self)  # tema çalışırken değişmez
+        self.colors = status_colors(self)  # tema değişince styles.recolor günceller
         self._service_factory = service_factory or create_mutation_service
         self._tasks = TaskRunner(self)
         self._running = False

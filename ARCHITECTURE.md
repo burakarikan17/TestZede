@@ -145,6 +145,10 @@ Her mutant sandbox'ta test paketine karşı koşturulur.
 - **Öğrenilmiş tahmin:** Geliştirme setinde RL'nin coverage eğrisinin doygunluğa
   ulaştığı test sayısı (diz noktası) hedef değişkendir; hayatta kalan mutant sayısı
   ise hata vekili olarak kullanılır. Kod metriklerinden scikit-learn regresyonu eğitilir.
+- Dosyalar: `baseline.py` (temel tahmin, `knee_point`), `learned.py` (`LearnedPredictor`,
+  `training_row`), `stage.py` (`BatchConfig.prediction` aşaması). Tahmin sayfası ve
+  `batch.prediction: true` temel tahmini kullanır; öğrenilmiş model için eğitim verisi
+  geliştirme setinin batch sonuçlarından `training_row` ile üretilir (henüz eğitilmiş model yoktur).
 
 ### datasets + batch (US-6)
 - **Factory** kalıbı: `DatasetFactory.get("humaneval")` → `DatasetLoader` →

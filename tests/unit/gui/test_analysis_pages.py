@@ -21,6 +21,7 @@ from testzede.gui.pages.call_graph_page import (
 )
 from testzede.gui.pages.graph_canvas import EMPTY_GRAPH
 from testzede.gui.pages.metrics_page import MetricsPage
+from testzede.gui.pages.prediction_page import PredictionPage
 from testzede.gui.state import AppState
 from testzede.services.analysis_service import AnalysisService, SampleTask
 from testzede.services.errors import ServiceError
@@ -75,6 +76,10 @@ class FakeService:
     def metrics(self, source):
         self._enter("metrics", source)
         return REAL.metrics(source)
+
+    def prediction(self, source):
+        self._enter("prediction", source)
+        return REAL.prediction(source)
 
     def humaneval_available(self):
         return self.available
@@ -539,7 +544,7 @@ def test_entering_the_page_picks_up_code_loaded_elsewhere(qtbot):
     window.close()
 
 
-def test_closing_the_window_waits_for_a_running_analysis(qtbot):
+def test_closing_the_window_waits_for_a_running_analysis(qtbot, monkeypatch):
     gate = threading.Event()
     service = FakeService(gate=gate)
     state = AppState(source=SOURCE)
@@ -549,7 +554,14 @@ def test_closing_the_window_waits_for_a_running_analysis(qtbot):
     page.run_button.click()
     qtbot.waitUntil(service.started.is_set, timeout=5000)
     thread = page._tasks._thread
-    threading.Timer(0.3, gate.set).start()
+    request_stop = page._tasks.request_stop
+
+    def release_on_stop():
+        # İş, ancak kapanış durdurma isteyince biter; sabit bekleme yok.
+        request_stop()
+        gate.set()
+
+    monkeypatch.setattr(page._tasks, "request_stop", release_on_stop)
     window.close()
     assert thread.isFinished()
 
@@ -574,3 +586,32 @@ def test_end_to_end_with_real_humaneval_data(qtbot):
     assert run_and_wait(qtbot, page, timeout=30000) is True
     assert page.summary_label.text().startswith("Kaynak: HumanEval/12")
     assert float(page.table.item(0, 1).text()) > 0
+
+
+# --- Tahmin sayfası (US-7) ---------------------------------------------------------------------
+
+
+def test_prediction_page_cannot_run_without_code(qtbot):
+    page = make(qtbot, PredictionPage, source="")
+    assert not page.run_button.isEnabled()
+    assert "Kod Yükle" in page.status_label.text()
+
+
+def test_prediction_page_shows_bugs_and_optimum_test_count(qtbot):
+    service = FakeService()
+    page = make(qtbot, PredictionPage, service)
+    assert run_and_wait(qtbot, page) is True
+    assert service.calls == [("prediction", SOURCE)]
+    rows = {r[0]: r[1] for r in table_rows(page.table)}
+    assert rows["Çevrimsel Karmaşıklık"] == "2"
+    assert rows["Optimum Test Sayısı"] == "2"
+    assert float(rows["Tahmini Hata Sayısı"]) == pytest.approx(
+        float(rows["Halstead Hacim (V)"]) / 3000.0, abs=1e-3
+    )
+    assert "Halstead" in page.summary_label.text()
+
+
+def test_prediction_page_reports_service_errors(qtbot):
+    page = make(qtbot, PredictionPage, FakeService(error=ServiceError("bozuk kod")))
+    assert run_and_wait(qtbot, page) is False
+    assert "bozuk kod" in page.status_label.text()

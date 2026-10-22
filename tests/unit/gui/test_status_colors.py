@@ -1,4 +1,5 @@
-"""Durum renkleri: açık (light_blue, uygulamanın teması) ve koyu (dark_teal) temada gerçek çizim.
+"""Durum renkleri: uygulamanın açık (varsayılan) ve koyu temasında, ayrıca geri dönüş yolu olan
+qt-material (light_blue) temasında gerçek çizim.
 
 Her durum için çizilen zemin pikseli ve o bölgedeki en belirgin yazı pikseli okunur; WCAG
 kontrast oranı en az 4.5:1 olmalıdır (normal metin, AA).
@@ -9,12 +10,10 @@ from __future__ import annotations
 import pytest
 from PySide6.QtGui import QColor, QImage
 from PySide6.QtWidgets import QLabel, QPlainTextEdit
-from qt_material import apply_stylesheet
 from result_builders import make_result
 
 from testzede.domain.models import MutationReport, RunStats, TestCase
-from testzede.gui import styles
-from testzede.gui.app import _apply_theme
+from testzede.gui import styles, theme
 from testzede.gui.main_window import PAGES, MainWindow
 from testzede.gui.pages.code_page import CodePage
 from testzede.gui.pages.coverage_page import CoveragePage
@@ -59,13 +58,10 @@ def _ink(img: QImage, bg: QColor, left: int, top: int, right: int, bottom: int) 
     return max(pixels, key=lambda color: _contrast(color, bg))
 
 
-@pytest.fixture(params=["light_blue", "dark_teal"])
-def themed(request, qtbot, qapp):
+@pytest.fixture(params=[theme.LIGHT_NAME, theme.DARK_NAME, theme.MATERIAL_NAME])
+def themed(request, qtbot, app_theme):
     """Temalı, sonuçları yüklenmiş, görünür ana pencere ve tema adı."""
-    if request.param == "light_blue":
-        _apply_theme(qapp)  # uygulamanın gerçek teması
-    else:
-        apply_stylesheet(qapp, theme="dark_teal.xml")
+    app_theme(request.param)
     window = MainWindow()
     qtbot.addWidget(window)
     state = window.state
@@ -90,8 +86,7 @@ def themed(request, qtbot, qapp):
     for row in (COVERAGE, MUTATION):  # on_enter sonuçları çizer
         window.nav.setCurrentRow(row)
         qtbot.wait(20)
-    yield window, request.param
-    qapp.setStyleSheet("")
+    return window, request.param
 
 
 def _editor_rows(view: QPlainTextEdit, numbers: list[int]) -> dict[int, tuple[QColor, QColor]]:
@@ -116,9 +111,9 @@ def _label_colors(label: QLabel) -> tuple[QColor, QColor]:
 
 
 def test_theme_is_detected_from_the_rendered_window(themed):
-    window, theme = themed
+    window, name = themed
     for row in (CODE, COVERAGE, MUTATION):
-        assert styles.is_dark_theme(window.pages[row]) == (theme == "dark_teal")
+        assert styles.is_dark_theme(window.pages[row]) == (name == theme.DARK_NAME)
 
 
 def test_every_status_pair_meets_wcag_aa_on_paper(themed):

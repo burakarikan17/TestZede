@@ -1,4 +1,4 @@
-"""Ana pencere: solda sayfa listesi, sağda seçili sayfa.
+"""Ana pencere: solda sayfa listesi, sağda seçili sayfa; sağ üstte açık/koyu tema düğmesi.
 
 Yeni sayfa ``PAGES``'e eklenir. Her sayfa :class:`BasePage`'den türer ve
 paylaşılan :class:`AppState`'i alır; sayfa açıldığında ``on_enter()`` çağrılır.
@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QListWidget,
     QMainWindow,
     QStackedWidget,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -26,13 +27,14 @@ from testzede.gui.pages.code_page import CodePage
 from testzede.gui.pages.coverage_page import CoveragePage
 from testzede.gui.pages.metrics_page import MetricsPage
 from testzede.gui.pages.mutation_page import MutationPage
+from testzede.gui.pages.prediction_page import PredictionPage
 from testzede.gui.pages.rl_page import RLPage
 from testzede.gui.state import AppState
+from testzede.gui.theme_switch import ThemeSwitch
 
 PageFactory = Callable[[AppState], BasePage]
 
-# Sayfalar ARCHITECTURE.md §6'daki sırayla eklenir. Tahmin sayfası sahibi tarafından
-# (opsiyonel) buraya eklenecek.
+# Sayfalar ARCHITECTURE.md §6'daki sırayla eklenir.
 PAGES: tuple[PageFactory, ...] = (
     CodePage,
     CallGraphPage,
@@ -41,6 +43,7 @@ PAGES: tuple[PageFactory, ...] = (
     RLPage,
     MutationPage,
     BatchPage,
+    PredictionPage,
 )
 
 
@@ -51,6 +54,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("TestZede")
         self.resize(1200, 780)
         self.nav = QListWidget()
+        self.nav.ensurePolished()  # satır yükseklikleri temanın iç boşluklarıyla hesaplansın
         self.nav.setFixedWidth(200)
         self.stack = QStackedWidget()
         self.pages: list[BasePage] = []
@@ -62,10 +66,19 @@ class MainWindow(QMainWindow):
         self.nav.currentRowChanged.connect(self._on_row_changed)
         self.nav.setCurrentRow(0)
 
+        self.theme_switch = ThemeSwitch(self)
+        top_bar = QHBoxLayout()
+        top_bar.addStretch(1)
+        top_bar.addWidget(self.theme_switch)
+
+        body = QHBoxLayout()
+        body.addWidget(self.nav)
+        body.addWidget(self.stack, 1)
+
         central = QWidget()
-        layout = QHBoxLayout(central)
-        layout.addWidget(self.nav)
-        layout.addWidget(self.stack, 1)
+        layout = QVBoxLayout(central)
+        layout.addLayout(top_bar)
+        layout.addLayout(body, 1)
         self.setCentralWidget(central)
 
     def page(self, title: str) -> BasePage:

@@ -9,7 +9,7 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QHeaderView
 
 from testzede.domain.models import MutationReport, RunStats, TestCase
-from testzede.gui.app import _apply_theme
+from testzede.gui import theme
 from testzede.gui.pages import mutation_logic as logic
 from testzede.gui.pages.coverage_page import CoveragePage
 from testzede.gui.pages.mutation_page import SELECTION_BG, SELECTION_FG, MutationPage
@@ -131,19 +131,18 @@ def test_selection_style_applies_only_to_the_survivor_table(qtbot):
     assert coverage.function_table.styleSheet() == HEADER_QSS  # yalnızca başlık düzeltmesi
 
 
-def test_selected_row_is_painted_dark_with_the_real_theme(qtbot, qapp):
-    _apply_theme(qapp)
-    try:
-        page = _page_with_result(qtbot)
-        page.resize(900, 500)
-        page.show()
-        qtbot.waitExposed(page)
-        table = page.survivors_table
-        table.selectRow(0)
-        qtbot.wait(50)
-        rect = table.visualItemRect(table.item(0, 2))
-        selected = table.viewport().grab().toImage().pixelColor(rect.center().x(), rect.top() + 2)
-        assert selected.name() == SELECTION_BG
-        assert _contrast(selected, QColor(SELECTION_FG)) >= 7
-    finally:
-        qapp.setStyleSheet("")
+@pytest.mark.parametrize("name", [theme.LIGHT_NAME, theme.MATERIAL_NAME])
+def test_selected_row_is_painted_dark_with_the_real_theme(qtbot, app_theme, name):
+    """Uygulamanın teması (açık) ve geri dönüş teması (qt-material) seçim stilini ezmez."""
+    app_theme(name)
+    page = _page_with_result(qtbot)
+    page.resize(900, 500)
+    page.show()
+    qtbot.waitExposed(page)
+    table = page.survivors_table
+    table.selectRow(0)
+    qtbot.wait(50)
+    rect = table.visualItemRect(table.item(0, 2))
+    selected = table.viewport().grab().toImage().pixelColor(rect.center().x(), rect.top() + 2)
+    assert selected.name() == SELECTION_BG
+    assert _contrast(selected, QColor(SELECTION_FG)) >= 7

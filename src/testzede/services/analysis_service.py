@@ -35,6 +35,7 @@ from testzede.analysis.metrics import (
 from testzede.datasets.base import DEFAULT_DATA_DIR, raw_dir
 from testzede.datasets.errors import DatasetError
 from testzede.datasets.factory import DatasetFactory
+from testzede.prediction.baseline import COMPLEXITY, VOLUME, predict_baseline
 from testzede.services.errors import ServiceError
 
 __all__ = [
@@ -216,6 +217,20 @@ def format_metric(name: str, value: float) -> str:
     return f"{value:.2f}"
 
 
+# ---- tahmin --------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PredictionView:
+    """Tahmin sayfasının gösterdiği sonuç ve hesabın girdileri."""
+
+    estimated_bugs: float
+    optimum_test_count: int
+    method: str
+    volume: float  # Halstead hacmi (V)
+    complexity: float  # McCabe çevrimsel karmaşıklığı
+
+
 # ---- örnek görevler ------------------------------------------------------------------
 
 
@@ -287,6 +302,26 @@ class AnalysisService:
             for name in METRIC_NAMES
         )
         return MetricsView(rows, maintainability_rank(values[_MAINTAINABILITY]))
+
+    def prediction(self, source: str) -> PredictionView:
+        """Kodun metriklerinden tahmini hata sayısını ve optimum test sayısını hesaplar.
+
+        Raises:
+            ServiceError: Kod boşsa ya da ayrıştırılamıyorsa.
+        """
+        _require_source(source)
+        try:
+            metrics = compute_metrics(source)
+        except MetricsError as exc:
+            raise ServiceError(f"Tahmin hesaplanamadı: {exc}") from exc
+        result = predict_baseline(metrics)
+        return PredictionView(
+            result.estimated_bugs,
+            result.optimum_test_count,
+            result.method,
+            metrics.values[VOLUME],
+            metrics.values[COMPLEXITY],
+        )
 
     @staticmethod
     def metrics_csv(view: MetricsView) -> str:

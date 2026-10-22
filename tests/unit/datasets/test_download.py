@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from testzede.datasets import download
-from testzede.datasets.download import download_dataset, downloadable_datasets
+from testzede.datasets.download import download_dataset, downloadable_datasets, is_downloaded
 from testzede.datasets.errors import DatasetError, DownloadError, IntegrityError
 from testzede.datasets.sources import SOURCES, RemoteFile
 
@@ -58,6 +58,20 @@ def test_force_downloads_again(server, tmp_path):
     remote_path.unlink()
     with pytest.raises(DownloadError):
         download_dataset("demo", tmp_path, base_url=base_url, force=True)
+
+
+def test_is_downloaded_checks_presence_and_checksum(server, tmp_path):
+    base_url, _ = server
+    assert not is_downloaded("demo", tmp_path)
+    (path,) = download_dataset("demo", tmp_path, base_url=base_url)
+    assert is_downloaded("demo", tmp_path)
+    path.write_bytes(b"bozuk")
+    assert not is_downloaded("demo", tmp_path)
+
+
+def test_is_downloaded_rejects_unknown_dataset(tmp_path):
+    with pytest.raises(DatasetError):
+        is_downloaded("yok", tmp_path)
 
 
 def test_corrupted_local_file_is_replaced(server, tmp_path):

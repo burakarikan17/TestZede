@@ -18,7 +18,8 @@ import importlib.util
 from dataclasses import dataclass
 from pathlib import Path
 
-from PySide6.QtGui import QColor, QFont, QFontDatabase, QGuiApplication, QPalette
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QBrush, QColor, QFont, QFontDatabase, QGuiApplication, QPalette
 from PySide6.QtWidgets import QLabel, QPlainTextEdit, QTableWidget, QWidget
 
 MONO_FAMILIES = '"Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace'
@@ -38,11 +39,16 @@ def _register_fallback_font() -> None:
     if _fallback_registered or QGuiApplication.instance() is None:
         return
     _fallback_registered = True
+    register_matplotlib_font("DejaVuSansMono.ttf")
+
+
+def register_matplotlib_font(filename: str) -> None:
+    """matplotlib'in paketlediği ``filename`` fontunu uygulamaya kaydeder; yoksa bir şey yapmaz."""
     spec = importlib.util.find_spec("matplotlib")
     if spec is None or not spec.submodule_search_locations:
         return
     root = Path(next(iter(spec.submodule_search_locations)))
-    font = root / "mpl-data" / "fonts" / "ttf" / "DejaVuSansMono.ttf"
+    font = root / "mpl-data" / "fonts" / "ttf" / filename
     if font.is_file():
         QFontDatabase.addApplicationFont(str(font))
 
@@ -133,3 +139,67 @@ def set_status_style(label: QLabel, color: StatusColor | None) -> None:
         f"color: {color.fg.name()}; background-color: {color.bg.name()};"
         " padding: 2px 6px; border-radius: 3px;"
     )
+
+
+# Tablo hücrelerinde yalnızca yazı rengi kullanılan durumlar (yazı renkleri birbirinden farklı).
+_CELL_KEYS = ("passed", "failed", "timeout")
+
+
+def recolor(root: QWidget, old: dict[str, StatusColor], new: dict[str, StatusColor]) -> None:
+    """Tema çalışırken değişince ``root`` altında çizilmiş durum renklerini yenisiyle değiştirir.
+
+    Sayfalar renkleri açılışta bir kez hesaplar (``colors`` sözlüğü). Bu sözlükler olduğu yerde
+    güncellenir (sonraki çizimler yeni renkle yapılır); hâlihazırda çizilmiş etiketler, tablo
+    hücreleri ve editör satır vurguları ise eski renk çiftinden hangi durum olduğu bulunarak
+    yeniden boyanır. Sayfa koduna dokunmadan her sayfada çalışır.
+    """
+    pairs = {(c.fg.name(), c.bg.name()): new[key] for key, c in old.items()}
+    cells = {old[key].fg.name(): new[key].fg for key in _CELL_KEYS}
+    for widget in [root, *root.findChildren(QWidget)]:
+        colors = getattr(widget, "colors", None)
+        if (
+            isinstance(colors, dict)
+            and colors
+            and all(isinstance(c, StatusColor) for c in colors.values())
+        ):
+            colors.update(new)
+        if isinstance(widget, QLabel):
+            _recolor_label(widget, pairs)
+        elif isinstance(widget, QTableWidget):
+            _recolor_cells(widget, cells)
+        elif isinstance(widget, QPlainTextEdit):
+            _recolor_selections(widget, pairs)
+
+
+def _recolor_label(label: QLabel, pairs: dict[tuple[str, str], StatusColor]) -> None:
+    qss = label.styleSheet()
+    for (fg, bg), color in pairs.items():
+        if f"color: {fg};" in qss and f"background-color: {bg};" in qss:
+            set_status_style(label, color)
+            return
+
+
+def _recolor_cells(table: QTableWidget, cells: dict[str, QColor]) -> None:
+    for row in range(table.rowCount()):
+        for column in range(table.columnCount()):
+            item = table.item(row, column)
+            if item is None:
+                continue
+            color = cells.get(item.foreground().color().name())
+            if color is not None and item.foreground().style() != Qt.BrushStyle.NoBrush:
+                item.setForeground(QBrush(color))
+
+
+def _recolor_selections(editor: QPlainTextEdit, pairs: dict[tuple[str, str], StatusColor]) -> None:
+    selections = editor.extraSelections()
+    changed = False
+    for selection in selections:
+        fmt = selection.format
+        color = pairs.get((fmt.foreground().color().name(), fmt.background().color().name()))
+        if color is not None:
+            fmt.setForeground(color.fg)
+            fmt.setBackground(color.bg)
+            selection.format = fmt
+            changed = True
+    if changed:
+        editor.setExtraSelections(selections)
