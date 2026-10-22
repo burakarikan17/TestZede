@@ -40,7 +40,7 @@ BORDER = "8C8C8C"
 HEAD_FILL = "D9E2F3"
 TABLE_WIDTH_DXA = 9026
 COVER_PARAGRAPHS = 10  # şablonda kapak: boşluk, başlık, sürüm, tarih, ad, alt başlık, ekip ×4
-INLINE = re.compile(r"(\*\*[^*]+\*\*|`[^`]+`)")
+INLINE = re.compile(r"(\*\*[^*]+\*\*|`[^`]+`|(?<!\*)\*[^*\s][^*]*\*(?!\*))")
 IMAGE = re.compile(r"^!\[(?P<alt>[^\]]*)\]\((?P<path>[^)]+)\)$")
 NUMBERED = re.compile(r"^(\d+)\. (.*)$")
 
@@ -63,6 +63,9 @@ def _add_inline(paragraph, text: str, *, size: float | None = None, italic: bool
         elif part.startswith("`") and part.endswith("`"):
             run = paragraph.add_run(part[1:-1])
             run.font.name = "Consolas"
+        elif len(part) > 2 and part.startswith("*") and part.endswith("*"):
+            run = paragraph.add_run(part[1:-1])
+            run.italic = True
         else:
             run = paragraph.add_run(part)
         if size is not None:
@@ -239,9 +242,21 @@ class Builder:
         table = self.doc.add_table(rows=1 + len(body), cols=columns)
         table.alignment = WD_TABLE_ALIGNMENT.CENTER
         size = 9 if columns >= 3 else 10
-        lengths = [max(len(r[i]) if i < len(r) else 0 for r in rows) for i in range(columns)]
-        total = sum(min(max(n, 6), 60) for n in lengths)
-        widths = [TABLE_WIDTH_DXA * min(max(n, 6), 60) / total for n in lengths]
+        # Sütun genişliği hücrelerin ortalama uzunluğuna göre; uzun hücreler satır kaydırır.
+        sample = body or rows
+        lengths = [
+            sum(len(r[i]) if i < len(r) else 0 for r in sample) / len(sample)
+            for i in range(columns)
+        ]
+        weights = [min(max(n, 11.0), 50.0) for n in lengths]
+        widths = [TABLE_WIDTH_DXA * w / sum(weights) for w in weights]
+        # Sabit düzen: Word içeriğe göre otomatik sığdırırsa uzun yollar dar sütunları ezer.
+        table.autofit = False
+        layout = OxmlElement("w:tblLayout")
+        layout.set(qn("w:type"), "fixed")
+        table._tbl.tblPr.append(layout)
+        for column, width in zip(table.columns, widths, strict=True):
+            column.width = Emu(int(width * 635))
         for r, values in enumerate(rows):
             for c in range(columns):
                 cell = table.cell(r, c)
