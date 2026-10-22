@@ -11,6 +11,7 @@ import sys
 from PySide6.QtWidgets import QApplication
 
 from testzede.gui import theme
+from testzede.gui.app_icon import set_app_identity
 from testzede.gui.error_handler import install_global_handler
 from testzede.gui.main_window import MainWindow
 from testzede.logging_setup import Logger
@@ -28,6 +29,7 @@ def main(argv: list[str] | None = None) -> int:
     """Uygulamayı açar; pencere kapanınca çıkış kodunu döndürür."""
     install_global_handler()
     app = QApplication.instance() or QApplication(argv if argv is not None else sys.argv)
+    set_app_identity(app)
     _apply_theme(app)
     window = MainWindow()
     window.show()

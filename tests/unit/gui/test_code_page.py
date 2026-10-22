@@ -314,3 +314,8 @@ def test_menu_return_syncs_code_page_with_external_state_change(qtbot):
     window.state.source = "def other(): pass"
     window.nav.setCurrentRow(0)
     assert code.editor.toPlainText() == "def other(): pass"
+
+
+def test_check_source_overly_nested_code_is_invalid_not_a_crash():
+    result = check_source("x = " + "+ 1 " * 20000)
+    assert not result.ok and result.message.startswith("Kod geçerli değil")
