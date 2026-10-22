@@ -39,6 +39,8 @@ INK = RGBColor(0x1F, 0x38, 0x64)
 BORDER = "8C8C8C"
 HEAD_FILL = "D9E2F3"
 TABLE_WIDTH_DXA = 9026
+CELL_PAD_DXA = 216  # hücrenin sol + sağ iç boşluğu (Word varsayılanı 108 + 108)
+WORD_CAP = 12  # bundan uzun kelimeler (yollar, kod) yine satır kaydırabilir
 COVER_PARAGRAPHS = 10  # şablonda kapak: boşluk, başlık, sürüm, tarih, ad, alt başlık, ekip ×4
 INLINE = re.compile(r"(\*\*[^*]+\*\*|`[^`]+`|(?<!\*)\*[^*\s][^*]*\*(?!\*))")
 IMAGE = re.compile(r"^!\[(?P<alt>[^\]]*)\]\((?P<path>[^)]+)\)$")
@@ -51,6 +53,25 @@ def _set_text(paragraph, text: str) -> None:
     runs[0].text = text
     for run in runs[1:]:
         run._element.getparent().remove(run._element)
+
+
+def _longest_word(text: str) -> int:
+    """Biçim işaretleri atılmış metindeki en uzun boşluksuz parçanın uzunluğu."""
+    return max((len(w) for w in re.sub(r"\*\*|`", "", text).split()), default=0)
+
+
+def _fit_widths(weights: list[float], floors: list[float], total: float) -> list[float]:
+    """Genişliği ağırlıklara göre böler; alt sınırın altında kalan sütunu sınıra sabitler."""
+    fixed: dict[int, float] = {}
+    while True:
+        rest = total - sum(fixed.values())
+        free = [i for i in range(len(weights)) if i not in fixed]
+        share = sum(weights[i] for i in free)
+        widths = {i: rest * weights[i] / share for i in free}
+        short = [i for i in free if widths[i] < floors[i]]
+        if not short or len(short) == len(free):
+            return [fixed.get(i, widths.get(i, 0.0)) for i in range(len(weights))]
+        fixed.update((i, floors[i]) for i in short)
 
 
 def _add_inline(paragraph, text: str, *, size: float | None = None, italic: bool = False) -> None:
@@ -249,7 +270,14 @@ class Builder:
             for i in range(columns)
         ]
         weights = [min(max(n, 11.0), 50.0) for n in lengths]
-        widths = [TABLE_WIDTH_DXA * w / sum(weights) for w in weights]
+        # Kısa kelimeler ("GER-001", "Zorunlu") ortadan bölünmesin: sütun en az en uzun
+        # kelimesi kadar geniş olur, kalan genişlik ağırlıklara göre dağıtılır.
+        floors = [
+            min(max((_longest_word(r[i]) if i < len(r) else 0) for r in rows), WORD_CAP) * size * 11
+            + CELL_PAD_DXA
+            for i in range(columns)
+        ]
+        widths = _fit_widths(weights, floors, TABLE_WIDTH_DXA)
         # Sabit düzen: Word içeriğe göre otomatik sığdırırsa uzun yollar dar sütunları ezer.
         table.autofit = False
         layout = OxmlElement("w:tblLayout")

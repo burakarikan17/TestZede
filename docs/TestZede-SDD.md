@@ -38,13 +38,13 @@ Doküman `src/testzede` altındaki kodun v0.3.1 sürümünü (`develop` 9bfdb5f)
 
 ## 1.5 Diyagramlar hakkında
 
-Diyagramlar `docs/diagrams/draw_diagrams.py` betiğiyle matplotlib kullanılarak çizilmiştir (makinede Graphviz, PlantUML ya da Mermaid CLI yoktur). Betik diyagramların kaynağıdır; sınıf, metot ve alan adları koddakiyle aynıdır. Yeniden üretmek için depo kökünden `python docs/diagrams/draw_diagrams.py` çalıştırılır. Sınıf diyagramlarında yalnızca tasarımı anlatan ana alan ve metotlar gösterilir; yardımcı (özel) fonksiyonların çoğu atlanmıştır.
+Diyagramlar `docs/diagrams/draw_diagrams.py` betiğiyle matplotlib kullanılarak çizilmiştir (makinede Graphviz, PlantUML ya da Mermaid CLI yoktur). Betik diyagramların kaynağıdır; sınıf, metot ve alan adları koddakiyle aynıdır. Yeniden üretmek için depo kökünden `python docs/diagrams/draw_diagrams.py` çalıştırılır. Sınıf diyagramlarında yalnızca tasarımı anlatan ana alan ve metotlar gösterilir; yardımcı (özel) fonksiyonların çoğu atlanmıştır. Şekiller diyagram türüne göre numaralanır ve `docs/diagrams/` dosya adlarıyla aynıdır: Şekil 1 kullanım durumu, Şekil 2 paket/bileşen, Şekil 3a–3f sınıf, Şekil 4a–4c sıralama, Şekil 5 etkinlik diyagramıdır. Bu yüzden Şekil 5 (§3.4) metinde Şekil 3d'den önce gelir.
 
 # 2. MİMARİ GENEL BAKIŞ
 
 ## 2.1 Kullanım durumları
 
-Tek ana aktör, test yazan ya da kod yükleyen kullanıcıdır. Kullanıcı arayüzden kod yükler, analiz eder, RL ile test üretir, coverage ve mutasyon ölçer; komut satırından veri setlerini indirir, ayırır ve toplu test çalıştırır. Hugging Face, veri setlerinin indirildiği dış kaynaktır.
+Tek ana aktör, test yazan ya da kod yükleyen kullanıcıdır. Kullanıcı arayüzden kod yükler, analiz eder, RL ile test üretir, coverage ve mutasyon ölçer; komut satırından veri setlerini indirir, ayırır ve toplu test çalıştırır. Hugging Face, veri setlerinin indirildiği dış kaynaktır (Şekil 1).
 
 ![Şekil 1 — Kullanım durumu diyagramı](diagrams/01-kullanim-durumu.png)
 
@@ -152,7 +152,7 @@ Her paket için sorumluluk, dışarıya açık arayüz ve bağımlılıklar veri
 | Eğitim | `trainer.generate_tests`, `run_episode`, `RLConfig` | `config.episodes` epizot oynatılır; en iyi epizot (önce dal, sonra satır coverage, sonra az test) seçilir. |
 | Çalıştırıcı sözleşmesi | `executor.Executor` (Protocol) | `call_function`, `run_tests`; gerçek uygulama `execution.SandboxExecutor`. |
 
-**Bitiş koşulu.** Tam coverage (dal varsa tüm dallar, yoksa tüm satırlar), `max_steps` adım ya da `patience` adım boyunca artış olmaması. Kullanıcı testleri zaten tam kapsıyorsa epizot adım atmadan biter.
+**Bitiş koşulu.** Tam coverage (dal varsa tüm dallar, yoksa tüm satırlar), `max_steps` adım ya da `patience` adım boyunca artış olmaması. Kullanıcı testleri zaten tam kapsıyorsa epizot adım atmadan biter. `generate_tests` akışı Şekil 5'tedir.
 
 **Kullanıcı testleriyle artırım (US-3).** Kullanıcı test dosyası verilirse ortam her epizoda bu testlerin coverage'ıyla başlar; dönen `tests` yalnızca RL'nin eklediği testlerdir. Sonuç hem "kullanıcı testleri" hem "kullanıcı testleri + RL" coverage'ını verir (`GenerationResult.baseline`, `coverage`).
 
@@ -403,6 +403,8 @@ Test edilen koddaki ya da kullanıcı girdisindeki hiçbir hata uygulamayı dü�
 3. **Servis.** Girdi doğrulama ve çekirdek hataları `ServiceError`'a çevrilir.
 4. **Arka plan işi.** `Worker.run`, `ServiceError` mesajını olduğu gibi, diğer istisnaları `Beklenmeyen hata: …` olarak `failed` sinyaliyle bildirir ve log'a yazar.
 5. **Global.** `error_handler.handle_exception`, GUI iş parçacığında yakalanmamış istisnayı log'a yazar ve "Beklenmeyen Hata" mesaj kutusunu gösterir; uygulama açık kalır.
+
+Bu katmanlardaki hata ve zaman aşımı akışı Şekil 4c'dedir.
 
 ![Şekil 4c — Sıralama diyagramı: hata ve zaman aşımı](diagrams/04c-sirali-hata-zaman-asimi.png)
 
