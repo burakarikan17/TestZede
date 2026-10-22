@@ -151,8 +151,9 @@ opsiyonel tahmin modülünde optimum test sayısının hedef değeri olarak kull
 
 ### mutation (US-5)
 Kendi AST tabanlı motorumuz kullanılır (Windows ve macOS'ta aynı davranış için).
-Operatörler (**Strategy** kalıbı): AOR (`+`↔`-`, `*`↔`/`), ROR (`<`↔`<=`, `==`↔`!=`),
-COR (`and`↔`or`), sabit değiştirme (`0`↔`1`), `return` değerini `None` yapma.
+Operatörler (**Strategy** kalıbı): AOR (`+`↔`-`, `*`↔`/`; `+=`, `-=`, `*=`, `/=` dahil),
+ROR (`<`↔`<=`, `>`↔`>=`, `==`↔`!=`), COR (`and`↔`or`), sabit değiştirme (`0`↔`1`,
+`True`↔`False`), `return` değerini `None` yapma.
 Her mutant sandbox'ta test paketine karşı koşturulur.
 
 ### prediction (opsiyonel, puansız)

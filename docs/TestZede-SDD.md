@@ -128,7 +128,7 @@ Her paket için sorumluluk, dışarıya açık arayüz ve bağımlılıklar veri
 
 **Arayüz.**
 
-- `operators.generate_all(source, operators=None) -> list[Mutant]`: tüm operatörleri uygular, aynı kaynaklı mutantları tekilleştirir. Operatörler: `AOR` (`+`↔`-`, `*`↔`/`), `ROR` (`<`↔`<=`, `>`↔`>=`, `==`↔`!=`), `COR` (`and`↔`or`), `CONST` (sabit değiştirme), `RETURN_NONE` (`return` değerini `None` yapma).
+- `operators.generate_all(source, operators=None) -> list[Mutant]`: tüm operatörleri uygular, aynı kaynaklı mutantları tekilleştirir. Operatörler: `AOR` (`+`↔`-`, `*`↔`/`; `+=`, `-=`, `*=`, `/=` dahil), `ROR` (`<`↔`<=`, `>`↔`>=`, `==`↔`!=`), `COR` (`and`↔`or`), `CONST` (sabit değiştirme: int `0`↔`1`, `True`↔`False`), `RETURN_NONE` (`return` değerini `None` yapma).
 - `engine.MutationEngine(max_mutants=100, seed=0, max_total_seconds=120.0, workers=None)`; `run(...) -> (MutationReport, RunStats)`, `run_detailed(...) -> MutationRun` (hayatta kalan mutantlar ve atlanan sayısıyla).
 
 **Akış.** (1) Kaynak ayrıştırılır. (2) Orijinal kodda testler bir kez çalıştırılır (baseline, 10 sn). Başarısız ya da zaman aşımına uğrayan test varsa ya da hiç geçen test yoksa `MutationError` verilir; orijinalde derlenemeyen testler karar dışı bırakılır. (3) Mutantlar üretilir; `max_mutants`'tan fazlaysa tohumlu rastgele örnekleme yapılır. (4) Testlerin hiç çalıştırmadığı satırdaki mutantlar koşturulmadan hayatta kalan sayılır. (5) Kalanlar iş parçacığı havuzunda `run_outcomes` ile koşturulur; mutant başına süre sınırı `max(3 sn, 5 × baseline süresi)`'dir. İptal ya da toplam süre aşımında o ana kadarki sonuç döner.
