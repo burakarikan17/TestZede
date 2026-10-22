@@ -544,7 +544,7 @@ def test_entering_the_page_picks_up_code_loaded_elsewhere(qtbot):
     window.close()
 
 
-def test_closing_the_window_waits_for_a_running_analysis(qtbot):
+def test_closing_the_window_waits_for_a_running_analysis(qtbot, monkeypatch):
     gate = threading.Event()
     service = FakeService(gate=gate)
     state = AppState(source=SOURCE)
@@ -554,7 +554,14 @@ def test_closing_the_window_waits_for_a_running_analysis(qtbot):
     page.run_button.click()
     qtbot.waitUntil(service.started.is_set, timeout=5000)
     thread = page._tasks._thread
-    threading.Timer(0.3, gate.set).start()
+    request_stop = page._tasks.request_stop
+
+    def release_on_stop():
+        # İş, ancak kapanış durdurma isteyince biter; sabit bekleme yok.
+        request_stop()
+        gate.set()
+
+    monkeypatch.setattr(page._tasks, "request_stop", release_on_stop)
     window.close()
     assert thread.isFinished()
 
