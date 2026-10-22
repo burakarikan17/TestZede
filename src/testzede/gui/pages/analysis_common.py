@@ -239,6 +239,7 @@ class AnalysisPage(BasePage):
         self._pending: tuple[str, str] | None = None  # çalışan işin (kaynak, ad) girdisi
         self._shown_source: str | None = None  # görünümde gösterilen sonucun kaynağı
         self._showing_problem = False
+        self._closed = False  # shutdown() sonrası gelen sonuçlar yok sayılır
 
         self.picker = SourcePicker(state, self._service)
         self.run_button = QPushButton(run_text)
@@ -293,11 +294,14 @@ class AnalysisPage(BasePage):
 
     def shutdown(self) -> None:
         """Pencere kapanırken çalışan işlerin bitmesini (üst sınırla) bekler."""
+        self._closed = True
         self.picker.shutdown()
         self._tasks.shutdown(timeout_ms=_WAIT_AT_EXIT_MS)
 
     @Slot(object)
     def _on_finished(self, result: object) -> None:
+        if self._closed:  # kuyruktaki sinyal, pencere silinirken teslim edilmiş olabilir
+            return
         self._running = False
         source, label = self._pending or (self.picker.source(), self.picker.label())
         self._pending = None
@@ -317,6 +321,8 @@ class AnalysisPage(BasePage):
 
     @Slot(str)
     def _on_failed(self, message: str) -> None:
+        if self._closed:
+            return
         self._running = False
         self._pending = None
         self._refresh_run_state()

@@ -566,6 +566,17 @@ def test_closing_the_window_waits_for_a_running_analysis(qtbot, monkeypatch):
     assert thread.isFinished()
 
 
+def test_results_arriving_after_shutdown_are_ignored(qtbot):
+    page = make(qtbot, CallGraphPage)
+    page.shutdown()
+    completed = []
+    page.run_completed.connect(completed.append)
+    page.picker.task_radio.deleteLater()  # pencere silinirken kuyruktaki sinyal bunu bulur
+    page._on_finished(REAL.call_graph(SOURCE))
+    page._on_failed("geç gelen hata")
+    assert completed == []
+
+
 def test_end_to_end_with_the_real_service(qtbot):
     graph = make(qtbot, CallGraphPage, REAL)
     assert run_and_wait(qtbot, graph, timeout=30000) is True
