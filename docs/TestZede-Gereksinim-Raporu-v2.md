@@ -71,10 +71,10 @@ Depoda ve git geçmişinde "Gereksinim Raporu v1" adlı bir belge bulunamadı. B
 | GER-026 | Test edilen kod ve testler ana uygulamadan ayrı bir alt süreçte, yalıtılmış Python modunda ve süre sınırıyla çalışır; sonsuz döngü ya da çöken kod yalnızca ilgili testi hatalı/zaman aşımı işaretler, uygulamayı düşürmez. | Zorunlu (Yüksek) | Sözleşme 7.4; EK-C "Kod izolasyonu", "Hata dayanıklılığı" | Kabul testi STD 3.5 (5.4), 3.2 (2.5); birim testi `tests/unit/execution/test_sandbox.py`, `test_run_outcomes.py` |
 | GER-027 | Yakalanmamış her istisna kayda alınır ve kullanıcıya mesaj kutusunda gösterilir; uygulama kapanmaz. | Zorunlu (Yüksek) | EK-C "Hata dayanıklılığı" | Kabul testi STD 3.2 (2.5, dolaylı); birim testi `tests/unit/gui/test_error_handler.py` |
 | GER-028 | Kod yüklenirken sözdizimi denetlenir; hata satır numarasıyla gösterilir ve önceki geçerli kod korunur; dosya okuma hataları (bulunamadı, UTF-8 değil, izin yok) anlaşılır mesajla bildirilir. | Zorunlu (Yüksek) | EK-C "Girdi doğrulama" | Kabul testi STD 3.2; birim testi `tests/unit/gui/test_code_page.py` |
-| GER-029 | Uzun işlemler ayrı iş parçacığında çalışır, arayüz bloklanmaz; pencere kapanırken çalışan işler beklenir. | Zorunlu (Yüksek) | EK-C "Arka plan işleri" | Kabul testi STD 3.6 (6.5), 3.7 (7.4), 3.8 (8.1, 8.4); kapanırken bekleme: birim testi `tests/unit/gui/test_analysis_pages.py`, `test_coverage_page.py`, `test_mutation_page.py` |
+| GER-029 | Uzun işlemler ayrı iş parçacığında çalışır, arayüz bloklanmaz; pencere kapanırken çalışan işler beklenir. | Zorunlu (Yüksek) | EK-C "Arka plan işleri" | Kabul testi STD 3.6 (6.5), 3.7 (7.4), 3.8 (8.1, 8.4); kapanırken bekleme: birim testi `tests/unit/gui/test_coverage_page.py::test_shutdown_waits_for_running_job` (diğer sayfalarda `shutdown()` yalnızca test sonu temizliğinde çağrılır, beklemeyi sınayan test yok) |
 | GER-030 | Ayrım dosyaları ham verilerin özetini taşır; veri değişmişse toplu test başlamaz. | Zorunlu | EK-C "Veri bütünlüğü"; Sözleşme 4.3 | STD karşılığı yok (3.9 yalnızca özetlerin yazıldığını sınar); birim testi `tests/unit/datasets/test_splits.py::test_load_split_units_detects_changed_raw_data` |
 | GER-031 | Kullanıcı girdisinden kaynaklanan hatalar anlaşılır bir mesajla gösterilir; komut satırında `Hata: …` yazılır, çıkış kodu 1 olur, hata izi (traceback) yazılmaz. | Zorunlu (Orta) | Sözleşme 7.4; STD 3.9 kabul ölçütü | Kabul testi STD 3.2, 3.9 (9.4); birim testi `tests/unit/datasets/test_cli.py`, `tests/unit/batch/test_cli_batch.py` |
-| GER-032 | Aynı yapılandırma aynı sonucu verir: toplu çalıştırmada `i`. birim `seed + i` tohumunu kullanır. | Zorunlu | ARCHITECTURE §3 | STD karşılığı yok; birim testi `tests/unit/rl/test_actions.py::test_generation_is_deterministic_for_same_seed`, `tests/unit/mutation/test_engine.py` (tohumlu örnekleme). Toplu çalıştırmanın uçtan uca tekrarlanabilirlik testi: doğrulanamadı |
+| GER-032 | Aynı yapılandırma aynı sonucu verir: toplu çalıştırmada `i`. birim `seed + i` tohumunu kullanır. | Zorunlu | ARCHITECTURE §3 | STD karşılığı yok; birim testleri yalnızca parçaların tohumla belirlenimli olduğunu sınar: `tests/unit/rl/test_actions.py::test_generation_is_deterministic_for_same_seed` (eylem girdileri), `tests/unit/mutation/test_engine.py` (tohumlu mutant örneklemesi). `seed + i` kuralını ve toplu çalıştırmanın uçtan uca tekrarlanabilirliğini sınayan test yok: doğrulanamadı |
 | GER-033 | TestZede Windows ve macOS üzerinde aynı şekilde çalışır. | Zorunlu | Sözleşme 3.2; EK-B | CI (Windows ve macOS); STD 1.2 (bkz. §4.2) |
 
 ## 3.3 Kısıtlar
@@ -144,7 +144,7 @@ SDD bölüm numaraları `docs/TestZede-SDD.md`'ye, STD numaraları `docs/TestZed
 | GER-025 | `prediction`, `PredictionPage` (§3.6) | — (STD 2.2.1) |
 | GER-026 | `sandbox`, `coverage_runner`, zaman aşımları (§2.3, §7.2, §7.3) | 3.5 (5.4), 3.2 (2.5) |
 | GER-027 | `error_handler`, `Logger`, `Worker` (§7.1) | 3.2 (2.5, dolaylı) |
-| GER-028 | `CodePage.check_source`, `read_source_file`, `analysis.parsing` (§7.5) | 3.2 (2.1–2.4) |
+| GER-028 | `code_page.check_source`, `code_page.read_source_file`, `analysis.parsing` (§7.5) | 3.2 (2.1–2.4) |
 | GER-029 | `TaskRunner`/`Worker`, `MainWindow.closeEvent` (§2.3, §3.10, §7.2) | 3.6 (6.5), 3.7 (7.4), 3.8 (8.1, 8.4) |
 | GER-030 | `load_split_units` özet denetimi (§4.3, §7.6) | — |
 | GER-031 | `ServiceError`, `cli.py` (§2.4, §7.1) | 3.2, 3.9 (9.4) |
@@ -165,7 +165,7 @@ SDD bölüm numaraları `docs/TestZede-SDD.md`'ye, STD numaraları `docs/TestZed
 | GER-025 Tahmin | Yok | STD 2.2.1 kapsam dışı (opsiyonel). |
 | GER-030 Veri değişince toplu test başlamaz | Yok | Yalnızca birim testi. |
 | GER-032 Tekrarlanabilirlik | Yok | Birim testleri var; uçtan uca tekrar testi doğrulanamadı. |
-| GER-033 Windows ve macOS | Kısmen | STD 1.2 "iki platformda" der; 4.1 kaydında her test case tek platformda koşulmuş (3.1–3.5, 3.7, 3.9 macOS; 3.6, 3.8 Windows). CI iki platformda birim testlerini koşar. |
+| GER-033 Windows ve macOS | Kısmen | STD 1.2 "iki platformda" der; 4.1'deki test ortamı ve "Test eden" satırına göre her test case tek platformda koşulmuş (3.1–3.5, 3.7, 3.9 macOS; 3.6, 3.8 Windows). CI iki platformda birim testlerini koşar. |
 | GER-041 Ayarların dondurulması | Yok | İnceleme ile. |
 
 ## 4.3 Gereksinimi olmayan testler
@@ -229,5 +229,5 @@ Bu bölümdeki konularda karar verilmemiştir; yalnızca dayanaklar yazılmışt
 1. Gereksinim Raporu v1 nerede? Depoda ve git geçmişinde yok. Varsa bu raporun §5'i ona göre güncellenmeli.
 2. Trello kartlarının içeriği depoda yok: GER-049 (Task board) doğrulanamadı.
 3. Dersin "Yazılım Şartnamesi" için istediği şablon depoda yok (`.gitignore`'daki `sozlesme/` klasörü yerel tutuluyor, bu makinede yok); K1 bu yüzden ekip kararı.
-4. GER-032: toplu çalıştırmanın aynı yapılandırmayla aynı sonucu verdiğini uçtan uca sınayan bir test bulunamadı.
+4. GER-032: `seed + i` kuralını ya da toplu çalıştırmanın aynı yapılandırmayla aynı sonucu verdiğini uçtan uca sınayan bir test bulunamadı.
 5. Öncelikler kaynaktan alındı (Zorunlu/Opsiyonel + STD riski); ekip ayrıca puanlamak isterse bu sütun güncellenmeli.

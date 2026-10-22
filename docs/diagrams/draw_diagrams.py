@@ -565,10 +565,27 @@ def package_diagram() -> Path:
     dep(prediction, rl, src=("right", 0.6), dst=("left", 0.6))
     dep(mutation, execution, src=("bottom", at(mutation, 7.0)), dst=("top", at(execution, 7.0)))
     brown = "#8A5A00"
-    dep(rl, execution, src=("bottom", 0.75), via=((5.14, 5.05),), dst=("left", 0.85), color=brown)
-    d.text(1.0, 4.82, "rl → execution yalnızca çalışma zamanında:", size=FS - 1.5, color=brown)
-    d.text(1.0, 4.95, "rl.executor.Executor (Protocol) yerine", size=FS - 1.5, color=brown)
-    d.text(1.0, 5.08, "execution.SandboxExecutor enjekte edilir.", size=FS - 1.5, color=brown)
+    link(
+        d,
+        execution,
+        rl,
+        "realize",
+        src=("left", 0.85),
+        via=((5.14, 5.05),),
+        dst=("bottom", 0.75),
+        color=brown,
+    )
+    d.text(1.0, 4.82, "rl, execution'ı import etmez: SandboxExecutor,", size=FS - 1.5, color=brown)
+    d.text(
+        1.0, 4.95, "rl.executor.Executor (Protocol) arayüzünü yapısal", size=FS - 1.5, color=brown
+    )
+    d.text(
+        1.0,
+        5.08,
+        "olarak karşılar ve çalışma zamanında enjekte edilir.",
+        size=FS - 1.5,
+        color=brown,
+    )
     note(
         d,
         7.55,
@@ -774,8 +791,8 @@ def class_execution_mutation() -> Path:
             "_workers = clamp(cpu-2, 1, 6)",
         ),
         (
-            "run(source, tests, progress, cancel)",
-            "    -> (MutationReport, RunStats)",
+            "run(source, tests, progress_callback,",
+            "    should_cancel) -> (MutationReport, RunStats)",
             "run_detailed(...) -> MutationRun",
             "_run_parallel(...)  # ThreadPool",
             "_check_baseline(baseline) -> set",
@@ -1109,7 +1126,12 @@ def class_datasets_batch() -> Path:
         0.55,
         "DatasetFactory",
         ("_loaders: dict[str, type]",),
-        ("register(loader)", "names() -> list[str]", "get(name, data_dir)", "  -> DatasetLoader"),
+        (
+            "register(loader)",
+            "names() -> tuple[str, ...]",
+            "get(name, data_dir)",
+            "  -> DatasetLoader",
+        ),
     )
     he = uml_class(d, 0.2, 2.25, "HumanEvalLoader", ("name = 'humaneval'",))
     s67 = uml_class(d, 1.62, 2.25, "Small67Loader", ("name = 'small67'",))
@@ -1328,7 +1350,7 @@ def class_services() -> Path:
             "prediction(source) -> PredictionView",
             "export_metrics_csv(view, path)",
             "humaneval_available() -> bool",
-            "humaneval_tasks() -> list[SampleTask]",
+            "humaneval_tasks() -> Sequence[SampleTask]",
         ),
     )
     batch = uml_class(
@@ -1367,7 +1389,11 @@ def class_services() -> Path:
         1.5,
         "MutationService",
         ("_engine: MutationEngine | None",),
-        ("run(source, tests, progress, cancel)", "run_detailed(...) -> MutationRun"),
+        (
+            "run(source, tests, progress_callback,",
+            "    should_cancel)",
+            "run_detailed(...) -> MutationRun",
+        ),
     )
     proto = uml_class(
         d,
@@ -1814,7 +1840,7 @@ def sequence_batch() -> Path:
     s.msg(y, "run", "mut", "mutation_stage: run_detailed(source, tests)")
     s.act("mut", y, y + step + 0.04)
     y += step
-    s.msg(y, "mut", "sub", "run_outcomes × mutant (paralel)")
+    s.msg(y, "mut", "sub", "baseline run_tests; run_outcomes × mutant (paralel)")
     y += step
     s.msg(y, "mut", "run", "MutationReport", ret=True)
     y += step
@@ -1882,7 +1908,7 @@ def sequence_gui() -> Path:
     s.msg(y, "mutp", "worker", "start(job, on_progress)")
     s.act("worker", y, y + 0.75)
     y += 0.22
-    s.msg(y, "worker", "msvc", "run_detailed(source, tests, progress, cancel)")
+    s.msg(y, "worker", "msvc", "run_detailed(source, tests, progress_callback, should_cancel)")
     s.act("msvc", y, y + 0.45)
     s.msg(y + 0.2, "msvc", "runner", "baseline + run_outcomes × mutant")
     y += 0.42
@@ -1923,8 +1949,10 @@ def sequence_errors() -> Path:
     s.msg(y, "sub", "runner", "süre doldu → TimeoutExpired", ret=True)
     y += 0.25
     s.msg(y, "runner", "runner", "çalıştırılan tüm testler → 'timeout'")
-    y += 0.35
-    s.msg(y, "runner", "worker", "ExecutionResult (coverage boş)", ret=True)
+    y += 0.3
+    s.msg(y, "runner", "svc", "ExecutionResult (coverage boş)", ret=True)
+    y += 0.22
+    s.msg(y, "svc", "worker", "ExecutionResult", ret=True)
     y += 0.22
     s.msg(y, "worker", "page", "finished → 'Zaman aşımı'", ret=True)
     alt2 = y + 0.15

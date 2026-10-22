@@ -72,7 +72,7 @@ Koddan doğrulanan bağımlılık kuralları:
 | Yürütme birimi | Ne çalışır | Kod |
 |---|---|---|
 | GUI iş parçacığı | Qt olay döngüsü, sayfalar, çizim | `gui/app.py`, `gui/main_window.py` |
-| `QThread` (sayfa başına en fazla bir) | Uzun işler: coverage, RL, mutasyon, toplu test, analiz | `gui/worker.py` (`TaskRunner`, `Worker`) |
+| `QThread` (`TaskRunner` başına en fazla bir; analiz sayfalarında `SourcePicker`'ın HumanEval listesi için ayrı bir `TaskRunner`'ı da vardır) | Uzun işler: coverage, RL, mutasyon, toplu test, analiz | `gui/worker.py` (`TaskRunner`, `Worker`) |
 | İş parçacığı havuzu | Mutantların paralel koşturulması (en çok `min(6, çekirdek − 2)`, en az 1 işçi) | `mutation/engine.py` (`ThreadPoolExecutor`) |
 | Alt süreç (`python -I`) | Oracle çağrısı ya da `coverage run --branch -m pytest` | `execution/sandbox.py`, `execution/coverage_runner.py` |
 
@@ -222,7 +222,7 @@ Her paket için sorumluluk, dışarıya açık arayüz ve bağımlılıklar veri
 | `analysis_service.AnalysisService` | `call_graph`, `metrics`, `prediction`, `export_metrics_csv`, `humaneval_tasks` | `analysis`, `prediction.baseline`, `datasets` (HumanEval listesi) |
 | `coverage_service.CoverageService` | `run(source, tests, timeout=10.0)` | `execution.coverage_runner.run_tests` |
 | `mutation_service.MutationService` | `run`, `run_detailed`; `create_mutation_service(max_mutants=100)` | `mutation.engine.MutationEngine` (Protocol üzerinden) |
-| `rl_service` | `list_functions`, `build_unit`, `load_rl_config`, `generate`, `tests_module` | `rl.trainer`, `execution.SandboxExecutor`, `batch.runner.measure_suite`, `config` |
+| `rl_service` | `list_functions`, `build_unit`, `load_rl_config`, `generate`, `tests_module` | `rl.trainer`, `execution.SandboxExecutor`, `batch.runner.measure_suite`, `datasets.units.make_unit`, `config` |
 | `batch_service` | `targets(data_dir)`, `run(target, …)` | `batch.runner`, `datasets`, `config`, `execution.SandboxExecutor` |
 | `test_loader` | `load_tests(test_source, module_name)` | `execution.sandbox.TARGET_MODULE` |
 
@@ -413,7 +413,7 @@ Test edilen koddaki ya da kullanıcı girdisindeki hiçbir hata uygulamayı dü�
 | Sınır | Değer | Nerede |
 |---|---|---|
 | Oracle çağrısı | 2 sn | `EnvConfig.call_timeout_s`, `sandbox.call_function` |
-| Test çalıştırma (bir `run_tests` çağrısı) | 10 sn | `coverage_runner` varsayılanı, `CoverageService.DEFAULT_TIMEOUT`, `sandbox.timeout_s` → `EnvConfig.run_timeout_s` |
+| Test çalıştırma (bir `run_tests` çağrısı) | 10 sn | `coverage_runner` varsayılanı, `coverage_service.DEFAULT_TIMEOUT` (modül sabiti), `sandbox.timeout_s` → `EnvConfig.run_timeout_s` |
 | Seçilen test paketinin son çalıştırması | 60 sn | `batch.suite_timeout_s`, `rl_service.generate(suite_timeout_s=60.0)` |
 | Mutasyon baseline | 10 sn | `mutation.engine.BASELINE_TIMEOUT` |
 | Mutant başına | `max(3 sn, 5 × baseline süresi)` | `MutationEngine.run_detailed` |
@@ -427,7 +427,7 @@ Test edilen koddaki ya da kullanıcı girdisindeki hiçbir hata uygulamayı dü�
 | Pencere kapanırken bekleme | Analiz ve Coverage 15 sn, Mutasyon 30 sn, Toplu Test 60 sn, RL 30 sn | `shutdown()` çağrıları |
 | Log dosyası | 1 MB × 3 dönen dosya | `logging_setup` |
 
-STD 3.8 test kaydındaki "birim sınırı veri seti başına uygulanır; `external` için sınır 5 ile 10 birim çalışır" notu, `_select`'in davranışıyla aynıdır.
+STD 3.8 test kaydındaki (durum 8.1) "birim sınırı veri seti başına uygulandığı için 'Split: external' 10 birim (5 HumanEval + 5 small67) çalıştırdı" notu, `_select`'in davranışıyla aynıdır.
 
 ## 7.3 Zaman aşımı davranışı
 
@@ -469,7 +469,7 @@ Aşağıdaki tablo sözleşme gereksinimlerini tasarım bileşenine ve STD testi
 | Yardımcı: indirme ve sızıntısız ayırma (EK-D, Sözleşme 4.1–4.3) | `datasets.download`, `datasets.splits`, `cli download/make-splits` | 3.9 |
 | Opsiyonel: tahmin (EK-D) | `prediction`, `PredictionPage` | — (STD 2.2.1: test edilmez) |
 | Uygulama düşmez; alt süreç ve süre sınırı (Sözleşme 7.4, EK-C) | `sandbox`, `coverage_runner`, `Worker`, `error_handler` (§7.1) | 3.2, 3.5 (5.4) |
-| Girdi doğrulama (EK-C) | `CodePage.check_source`, `analysis.parsing`, servis doğrulamaları (§7.5) | 3.2 |
+| Girdi doğrulama (EK-C) | `code_page.check_source`, `analysis.parsing`, servis doğrulamaları (§7.5) | 3.2 |
 | Arayüz bloklanmaz, kapanırken işler beklenir (EK-C) | `TaskRunner`/`Worker`, `MainWindow.closeEvent` (§2.3, §7.2) | 3.6 (6.5), 3.7 (7.4), 3.8 (8.1, 8.4) |
 | Veri bütünlüğü (EK-C, Sözleşme 4.3) | `download`, `splits`, `ReportMeta.split_hash` (§4.3, §7.6) | 3.8 (8.3), 3.9 |
 | Platform: Windows ve macOS, Python 3.11 (EK-B) | `pyproject.toml` (`>=3.11,<3.12`), CI matrisi (`windows-latest`, `macos-latest`) | 1.2 (test yaklaşımı) |
@@ -489,6 +489,6 @@ Kod, README, ARCHITECTURE.md, sözleşme ve STD karşılaştırılırken bulunan
 | T7 | ARCHITECTURE §6, README, EK-B: "PySide6 + qt-material (Material Design teması)" | Varsayılan tema `gui/theme.py`'deki özel açık/koyu temadır (Fusion + QSS); qt-material yalnızca `TESTZEDE_THEME=material` ile seçilen geri dönüş temasıdır. |
 | T8 | ARCHITECTURE §6: Coverage sayfası "Emma benzeri ağaç görünümü (eleman / coverage / kapsanan / kaçan / toplam)" | Kodda ağaç (`QTreeWidget`) yok; "Fonksiyonlar" (Fonksiyon, Kapsama %) ve "Test Sonuçları" (Test, Sonuç) tabloları, renkli kaynak görünümü ve özet satırı var. |
 | T9 | README Kurulum: "TestGenEval koşuları için Docker (opsiyonel)" | EK-B: "Docker: Gerekmez". Kodda Docker kullanımı yok; README ifadesi eski görünüyor. |
-| T10 | STD 1.2: testler iki platformda yapılır | STD 4.1 kayıtlarında her test tek platformda koşulmuş (3.1–3.5, 3.7, 3.9 macOS; 3.6, 3.8 Windows). |
+| T10 | STD 1.2: testler iki platformda yapılır | STD 4.1'deki test ortamı ve "Test eden" satırına göre her test tek platformda koşulmuş (3.1–3.5, 3.7, 3.9 macOS; 3.6, 3.8 Windows). |
 
 Doğrulanamayan: Trello kartlarının içeriği depoda yok; bu dokümanda Trello'ya dayanan bir ifade yoktur.
