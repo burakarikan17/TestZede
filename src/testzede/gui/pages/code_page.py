@@ -69,7 +69,7 @@ def check_source(text: str) -> SourceCheck:
     except SyntaxError as exc:
         where = f"Satır {exc.lineno}: " if exc.lineno else ""
         return SourceCheck(False, f"{where}{exc.msg}", line=exc.lineno)
-    except ValueError as exc:  # örn. null bayt
+    except (ValueError, RecursionError, MemoryError) as exc:  # null bayt, aşırı iç içe yapı
         return SourceCheck(False, f"Kod geçerli değil: {exc}")
     names = [node.name for node in tree.body if isinstance(node, ast.FunctionDef)]
     if names:
