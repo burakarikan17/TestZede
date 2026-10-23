@@ -75,7 +75,7 @@ Depoda ve git geçmişinde "Gereksinim Raporu v1" adlı bir belge bulunamadı. B
 | GER-030 | Ayrım dosyaları ham verilerin özetini taşır; veri değişmişse toplu test başlamaz. | Zorunlu | EK-C "Veri bütünlüğü"; Sözleşme 4.3 | STD karşılığı yok (3.9 yalnızca özetlerin yazıldığını sınar); birim testi `tests/unit/datasets/test_splits.py::test_load_split_units_detects_changed_raw_data` |
 | GER-031 | Kullanıcı girdisinden kaynaklanan hatalar anlaşılır bir mesajla gösterilir; komut satırında `Hata: …` yazılır, çıkış kodu 1 olur, hata izi (traceback) yazılmaz. | Zorunlu (Orta) | Sözleşme 7.4; STD 3.9 kabul ölçütü | Kabul testi STD 3.2, 3.9 (9.4); birim testi `tests/unit/datasets/test_cli.py`, `tests/unit/batch/test_cli_batch.py` |
 | GER-032 | Aynı yapılandırma aynı sonucu verir: toplu çalıştırmada `i`. birim `seed + i` tohumunu kullanır. | Zorunlu | ARCHITECTURE §3 | STD karşılığı yok; birim testleri yalnızca parçaların tohumla belirlenimli olduğunu sınar: `tests/unit/rl/test_actions.py::test_generation_is_deterministic_for_same_seed` (eylem girdileri), `tests/unit/mutation/test_engine.py` (tohumlu mutant örneklemesi). `seed + i` kuralını ve toplu çalıştırmanın uçtan uca tekrarlanabilirliğini sınayan test yok: doğrulanamadı |
-| GER-033 | TestZede Windows ve macOS üzerinde aynı şekilde çalışır. | Zorunlu | Sözleşme 3.2; EK-B | CI (Windows ve macOS); STD 1.2 (bkz. §4.2) |
+| GER-033 | TestZede Windows ve macOS üzerinde aynı şekilde çalışır. | Zorunlu | Sözleşme 3.2; EK-B | CI (Windows ve macOS); STD 3.1–3.9 her iki platformda (STD 1.2, 4.1) |
 
 ## 3.3 Kısıtlar
 
@@ -165,7 +165,6 @@ SDD bölüm numaraları `docs/TestZede-SDD.md`'ye, STD numaraları `docs/TestZed
 | GER-025 Tahmin | Yok | STD 2.2.1 kapsam dışı (opsiyonel). |
 | GER-030 Veri değişince toplu test başlamaz | Yok | Yalnızca birim testi. |
 | GER-032 Tekrarlanabilirlik | Yok | Birim testleri var; uçtan uca tekrar testi doğrulanamadı. |
-| GER-033 Windows ve macOS | Kısmen | STD 1.2 "iki platformda" der; 4.1'deki test ortamı ve "Test eden" satırına göre her test case tek platformda koşulmuş (3.1–3.5, 3.7, 3.9 macOS; 3.6, 3.8 Windows). CI iki platformda birim testlerini koşar. |
 | GER-041 Ayarların dondurulması | Yok | İnceleme ile. |
 
 ## 4.3 Gereksinimi olmayan testler
@@ -214,13 +213,13 @@ Bu bölümdeki konularda karar verilmemiştir; yalnızca dayanaklar yazılmışt
 - README: "Diğer teslimler: Yazılım Şartnamesi (3), …"; görev dağılımında "Şartname" Burak Arıkan'a atanmış.
 - Bu rapor (GER-001 … GER-053) ekleri tek listede, kimlik ve doğrulama yöntemiyle topladığı için şartnamenin gereksinim bölümünü de karşılayabilir; ancak dersin "Yazılım Şartnamesi" için istediği biçim depoda yok, doğrulanamadı.
 
-**K2 — Kodla çelişen belge ifadeleri hangi belgede düzeltilecek?** SDD §9'daki T1–T10. ARCHITECTURE.md'deki ifadeler (T1–T3, T5–T8) koda uydurulmuştur; README, `pyproject.toml`, sözleşme ekleri ve STD'deki farklar açıktır. Bu raporu doğrudan etkileyenler:
+**K2 — Kodla çelişen belge ifadeleri hangi belgede düzeltilecek?** SDD §9'daki T1–T10. ARCHITECTURE.md'deki ifadeler (T1–T3, T5–T8) koda uydurulmuştur; README, `pyproject.toml` ve sözleşme eklerindeki farklar açıktır; STD'deki fark (T10) kapanmıştır. Bu raporu doğrudan etkileyenler:
 
 - GER-037: EK-B "Docker: Gerekmez", README Kurulum "TestGenEval koşuları için Docker (opsiyonel)". Kodda Docker yok.
 - GER-038: EK-B ve `pyproject.toml` `gymnasium`'u listeler; kod kullanmaz (`rl/env.py` gymnasium'a bağımlı değil).
 - EK-B "PySide6, qt-material: … Material Design teması": varsayılan tema artık özel açık/koyu temadır; qt-material geri dönüş seçeneğidir.
 
-**K3 — STD 1.2 "iki platformda" ifadesi.** Kabul testi öncesi kalan case'ler ikinci platformda da koşulacak mı, yoksa STD 1.2 mi düzeltilecek (GER-033)?
+**K3 — STD 1.2 "iki platformda" ifadesi (kapandı).** Eksik case'ler ikinci platformda da koşuldu: 3.1–3.5, 3.7 ve 3.9 Windows'ta (23/10/2026), 3.6 ve 3.8 macOS'ta (24/10/2026). Durum sonuçları iki platformda aynıdır; STD 1.2 ve 4.1 buna göre güncellendi, kanıtlar `docs/std/v0.3.1/windows/` ve `docs/std/v0.3.1/macos/` altında (GER-033).
 
 **K4 — STD kapsama boşlukları (§4.2).** GER-017 (TestGenEval ve Lite ile toplu test) ve GER-020 (hatalı birim yolu) için kabul testi öncesi ek durum yazılsın mı?
 

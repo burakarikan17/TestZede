@@ -478,7 +478,7 @@ Aşağıdaki tablo sözleşme gereksinimlerini tasarım bileşenine ve STD testi
 
 # 9. TUTARSIZLIKLAR VE DOĞRULANAMAYANLAR
 
-Kod, README, ARCHITECTURE.md, sözleşme ve STD karşılaştırılırken bulunan farklar aşağıdadır. Bu doküman kodu esas almıştır. ARCHITECTURE.md'deki ifadeler koda uydurulmuştur ("Durum" sütunu); README, `pyproject.toml`, sözleşme ekleri ve STD'deki farklar için hangi belgenin güncelleneceği ekip kararıdır.
+Kod, README, ARCHITECTURE.md, sözleşme ve STD karşılaştırılırken bulunan farklar aşağıdadır. Bu doküman kodu esas almıştır. ARCHITECTURE.md'deki ifadeler koda uydurulmuştur ("Durum" sütunu); README, `pyproject.toml` ve sözleşme eklerindeki farklar için hangi belgenin güncelleneceği ekip kararıdır.
 
 | # | Kaynak ve ifade | Kodda olan | Durum |
 |---|---|---|---|
@@ -491,6 +491,6 @@ Kod, README, ARCHITECTURE.md, sözleşme ve STD karşılaştırılırken bulunan
 | T7 | ARCHITECTURE §6, README, EK-B: "PySide6 + qt-material (Material Design teması)" | Varsayılan tema `gui/theme.py`'deki özel açık/koyu temadır (Fusion + QSS); qt-material yalnızca `TESTZEDE_THEME=material` ile seçilen geri dönüş temasıdır. | ARCHITECTURE düzeltildi; README, EK-B açık |
 | T8 | ARCHITECTURE §6: Coverage sayfası "Emma benzeri ağaç görünümü (eleman / coverage / kapsanan / kaçan / toplam)" | Kodda ağaç (`QTreeWidget`) yok; "Fonksiyonlar" (Fonksiyon, Kapsama %) ve "Test Sonuçları" (Test, Sonuç) tabloları, renkli kaynak görünümü ve özet satırı var. | ARCHITECTURE düzeltildi |
 | T9 | README Kurulum: "TestGenEval koşuları için Docker (opsiyonel)" | EK-B: "Docker: Gerekmez". Kodda Docker kullanımı yok; README ifadesi eski görünüyor. | Açık (README) |
-| T10 | STD 1.2: testler iki platformda yapılır | STD 4.1'deki test ortamı ve "Test eden" satırına göre her test tek platformda koşulmuş (3.1–3.5, 3.7, 3.9 macOS; 3.6, 3.8 Windows). | Açık (ekip kararı, STD) |
+| T10 | STD 1.2: testler iki platformda yapılır | İlk koşuda her test tek platformdaydı (3.1–3.5, 3.7, 3.9 macOS; 3.6, 3.8 Windows). Eksik taraf tamamlandı: 3.1–3.5, 3.7, 3.9 Windows'ta (23/10/2026), 3.6, 3.8 macOS'ta (24/10/2026); sonuçlar iki platformda aynı. | Kapandı (STD 1.2, 4.1) |
 
 Doğrulanamayan: Trello kartlarının içeriği depoda yok; bu dokümanda Trello'ya dayanan bir ifade yoktur.
