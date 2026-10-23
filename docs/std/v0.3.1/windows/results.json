@@ -1,0 +1,280 @@
+{
+  "1.1": {
+    "status": "Kod geçerli. Üst düzey fonksiyonlar: sign",
+    "kind": "ok"
+  },
+  "1.2": {
+    "status": "3 test bulundu: test_positive, test_negative, test_zero",
+    "kind": "ok"
+  },
+  "1.3": {
+    "loaded": true,
+    "editor_matches": true,
+    "status": "Kod geçerli. Üst düzey fonksiyonlar: sign",
+    "module": "sign"
+  },
+  "1.4": {
+    "code_radio": "Kod Yükle sayfasındaki kod",
+    "checked": true,
+    "run_enabled": true,
+    "status": "",
+    "hint": "Kod Yükle sayfasındaki kod (6 satır)."
+  },
+  "2.1": {
+    "status": "Satır 1: invalid syntax (Önceki geçerli kod korunuyor.)",
+    "kind": "error"
+  },
+  "2.2": {
+    "state_source_is_K1": true,
+    "status": "Satır 1: invalid syntax (Önceki geçerli kod korunuyor.)"
+  },
+  "2.2-bos": {
+    "status": "Kod boş. Lütfen kod yapıştırın veya bir dosya açın. (Önceki geçerli kod korunuyor.)",
+    "state_source_is_K1": true
+  },
+  "2.3-Çağrı Grafiği": {
+    "run_enabled": false,
+    "status": "Kaynak kod yok. Önce 'Kod Yükle' sayfasında kod yükleyin ya da bir HumanEval görevi seçin."
+  },
+  "2.3-Metrikler": {
+    "run_enabled": false,
+    "status": "Kaynak kod yok. Önce 'Kod Yükle' sayfasında kod yükleyin ya da bir HumanEval görevi seçin."
+  },
+  "2.3-Coverage": {
+    "run_enabled": false,
+    "status": "Kaynak kod yok. Önce 'Kod Yükle' sayfasında kaynak kodu yükleyin."
+  },
+  "2.4": {
+    "loaded": false,
+    "status": "Dosya UTF-8 olarak okunamadı (bayt 5). Lütfen dosyayı UTF-8 olarak kaydedip tekrar deneyin.",
+    "kind": "error"
+  },
+  "2.4-yok": {
+    "loaded": false,
+    "status": "Dosya bulunamadı: C:\\Users\\BURAK\\AppData\\Local\\Temp\\claude\\C--Users-BURAK-Desktop-TestZede\\baf4e714-82bd-43c3-818c-d5d1235b166e\\scratchpad\\std_win\\yok.py"
+  },
+  "2.5": {
+    "window_visible": true,
+    "uncaught": 0
+  },
+  "3.1": {
+    "ok": true,
+    "kinds": {
+      "Fonksiyon": [
+        "fact",
+        "main"
+      ],
+      "Yerleşik": [
+        "len",
+        "print",
+        "str"
+      ],
+      "Harici": [
+        "math.sqrt"
+      ],
+      "Modül": [
+        "<module>"
+      ]
+    },
+    "rows": [
+      [
+        "fact",
+        "Fonksiyon",
+        "0",
+        "1"
+      ],
+      [
+        "main",
+        "Fonksiyon",
+        "5",
+        "1"
+      ],
+      [
+        "len",
+        "Yerleşik",
+        "0",
+        "1"
+      ],
+      [
+        "print",
+        "Yerleşik",
+        "0",
+        "1"
+      ],
+      [
+        "str",
+        "Yerleşik",
+        "0",
+        "1"
+      ],
+      [
+        "math.sqrt",
+        "Harici",
+        "0",
+        "1"
+      ],
+      [
+        "<module>",
+        "Modül",
+        "1",
+        "0"
+      ]
+    ]
+  },
+  "3.2": {
+    "summary": "Kaynak: Kod Yükle · 2 fonksiyon, 3 yerleşik (builtin), 1 harici (import), 1 modül düzeyi · 7 çağrı · özyinelemeli: fact",
+    "max_gap_s": 0.032
+  },
+  "3.3-tablo": {
+    "canvas_selected": "main",
+    "detail": "main: çağırdıkları: fact, len, math.sqrt, print, str · çağıranlar: <module>"
+  },
+  "3.3-grafik": {
+    "canvas_selected": "fact",
+    "table_row": "fact",
+    "detail": "fact: çağırdıkları: yok · çağıranlar: main · kendini çağırıyor (özyineleme)"
+  },
+  "3.4": {
+    "ok": true,
+    "task": "HumanEval/0 · has_close_elements",
+    "tasks": 164,
+    "summary": "Kaynak: HumanEval/0 · 1 fonksiyon, 2 yerleşik (builtin) · 2 çağrı",
+    "nodes": 3
+  },
+  "4.1": {
+    "ok": true,
+    "count": 14
+  },
+  "4.2": {
+    "values": {
+      "LOC": "6",
+      "LLOC": "6",
+      "SLOC": "6",
+      "Yorum": "0",
+      "Çoklu Satır": "0",
+      "Boş Satır": "0",
+      "Halstead Zorluk": "2.50",
+      "Halstead Çaba": "51.70",
+      "Halstead Uzunluk": "8",
+      "Halstead Zaman": "2.87",
+      "Halstead Kelime Haznesi": "6",
+      "Halstead Hacim": "20.68",
+      "Çevrimsel Karmaşıklık": "3",
+      "Sürdürülebilirlik İndeksi": "73.41  (A)"
+    }
+  },
+  "4.3": {
+    "summary": "Kaynak: Kod Yükle · Sürdürülebilirlik: A (yüksek)"
+  },
+  "4.4": {
+    "exported": true,
+    "bom": true,
+    "lines": 15,
+    "header": "Metrik,Değer,Açıklama",
+    "turkish_ok": true
+  },
+  "5.1": {
+    "ok": true,
+    "lines": "Satır: 50.0% (3/6)",
+    "branches": "Dal: 25.0% (1/4)",
+    "tests": [
+      [
+        "test_positive",
+        "Geçti"
+      ]
+    ],
+    "status": "Tamamlandı."
+  },
+  "5.3": {
+    "colored_lines": 6,
+    "colors": [
+      "#c8e6c9",
+      "#ffcdd2",
+      "#ffe0b2"
+    ],
+    "statuses": {
+      "1": "covered",
+      "2": "partial",
+      "3": "covered",
+      "4": "missed",
+      "5": "missed",
+      "6": "missed"
+    }
+  },
+  "5.2": {
+    "ok": true,
+    "lines": "Satır: 100.0% (6/6)",
+    "branches": "Dal: 100.0% (4/4)",
+    "tests": [
+      [
+        "test_positive",
+        "Geçti"
+      ],
+      [
+        "test_negative",
+        "Geçti"
+      ],
+      [
+        "test_zero",
+        "Geçti"
+      ]
+    ]
+  },
+  "5.4": {
+    "ok": true,
+    "seconds": 10.0,
+    "tests": [
+      [
+        "test_positive",
+        "Zaman aşımı"
+      ],
+      [
+        "test_negative",
+        "Zaman aşımı"
+      ],
+      [
+        "test_zero",
+        "Zaman aşımı"
+      ],
+      [
+        "test_loop",
+        "Zaman aşımı"
+      ]
+    ],
+    "status": "Tamamlandı.",
+    "max_gap_s": 0.032,
+    "window_visible": true
+  },
+  "7.1": {
+    "ok": true,
+    "max_mutants": 100,
+    "score": "Skor: 90.0%",
+    "killed": "Öldürülen: 9",
+    "survived": "Hayatta kalan: 1",
+    "timeout": "Zaman aşımı: 0",
+    "skipped": "Atlanan (kapsanmamış): 0",
+    "compilation": "Derleme: 100.0% (3/3)",
+    "time": "Test süresi: 1.28 sn",
+    "status": "Tamamlandı."
+  },
+  "7.2": {
+    "survivors": [
+      [
+        "CONST",
+        "2",
+        "0 -> 1"
+      ]
+    ]
+  },
+  "7.3": {
+    "diff": " def sign(x):\n-    if x > 0:\n+    if x > 1:\n         return 1\n     if x < 0:"
+  },
+  "7.4": {
+    "max_gap_s": 0.062,
+    "progress_updates": 10
+  },
+  "genel": {
+    "uncaught_exceptions": [],
+    "window_visible": true
+  }
+}
