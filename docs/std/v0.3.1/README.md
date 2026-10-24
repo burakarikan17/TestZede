@@ -24,3 +24,14 @@ Burak Arıkan tarafından Windows'ta (Windows 10 Pro 10.0.19045, Python 3.11.16,
 - `results_36_38.json`, `3.6-*.png`, `3.8-*.png`, `3.6-pytest.log`: ham sonuçlar ve kanıtlar.
 - Not: birim sınırı veri seti başına uygulanır; `external` ayrımı iki veri seti içerdiği için sınır 5
   ile 10 birim çalışır (5 HumanEval + 5 small67).
+
+- `windows/`: 3.1–3.5, 3.7 (`run_std_gui.py`) ve 3.9 (komut satırı) adımlarının Windows'ta (Windows 10 Pro 10.0.19045,
+  Python 3.11.16, v0.3.2 kodu, Burak Arıkan, 23/10/2026) tekrarı: ekran görüntüleri, `results.json`, `3.9-cli.log`.
+  Durum metinleri macOS ile aynıdır; yalnızca yol ve süre değerleri farklıdır. Üç ayrım dosyasının SHA-256'ları
+  (development a80354fd…, main b5e72c41…, external d91c0131…) iki platformda aynıdır.
+
+- `macos/`: 3.6 ve 3.8 adımlarının (`run_std_gui_36_38.py`) macOS'ta (macOS 27.0, Python 3.11.16, v0.3.2 kodu, develop
+  9c31c27, Enes Öztürk, 24/10/2026) tekrarı: ekran görüntüleri, `results_36_38.json`, `3.6-pytest.log`. Durum metinleri
+  ve 10 birimin sonuçları Windows ile aynıdır; yalnızca yol ve süre değerleri farklıdır. `external` SHA-256'sı
+  (d91c0131…) raporlarda bulunur. Çapraz test Burak Arıkan'ın Windows koşusudur; bu tekrar platform doğrulamasıdır.
+  Böylece 3.1–3.9'un tamamı iki platformda koşulmuştur.
